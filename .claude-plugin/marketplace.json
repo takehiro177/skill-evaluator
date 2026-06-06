@@ -8,7 +8,7 @@
     {
       "name": "skill-evaluator",
       "source": "./",
-      "description": "Blind A/B evaluation of Claude Code skills, with multi-skill interaction analysis (synergy / redundancy / conflict)."
+      "description": "Cost-weighted A/B + multi-skill interaction (synergy / redundancy / conflict) performance testing for Claude Code skills — not a static linter/security scanner."
     }
   ]
 }

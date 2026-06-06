@@ -1,31 +1,37 @@
 # skill-evaluator
 
-**Evaluate Claude Code skills with blind A/B testing — entirely inside Claude
-Code chat.**
+> **Cost-weighted A/B *performance* testing for Claude Code skills — one skill, or
+> several *combined*.** It measures real token cost and blind-judged output quality
+> from live runs; it is **not** a static linter or security scanner. *(Looking for
+> static security / quality / compliance analysis? That's a
+> [different tool that shares this name](https://github.com/bjulius/skill-evaluator).)*
 
-Point it at a skill, and it measures whether that skill actually helps: it reads
-what the skill *claims* to do, derives representative tasks, solves each one
-**with** and **without** the skill via subagents, attributes real token costs
-from the session transcript, scores output quality with a **blind LLM-as-judge**
-subagent, and writes a Markdown report.
+**Do your Claude Code skills actually earn their context — alone, and stacked together?**
 
-No SaaS, no API server, no harness to run — just a Claude Code skill plus two
-subagents and two tiny local scripts. Drop it into **any** project.
+Point skill-evaluator at **two or more skills** and it measures the thing single-skill
+testing never captures: their **interaction** when combined — **synergy**,
+**redundancy**, or outright **conflict**. Point it at **one** skill and it runs the same
+rigorous check on that skill alone. Either way you get two numbers you can act on:
+**cost-weighted token economics** (priced on the axis the skill actually bills on, read
+from the real session transcript — never estimated) and **output quality** (scored by a
+**blind LLM-as-judge**) — all from a blind, injection-based A/B test, entirely inside
+Claude Code chat.
 
-**New in 0.2 —** point it at *two or more* skills and it measures their
-**interaction** when combined: synergy, redundancy, or conflict, the impact that
-single-skill testing never captures. See
-[Evaluate skills combined](#evaluate-skills-combined-multi-skill-interaction).
+No SaaS, no API server, no harness to run — just a Claude Code skill plus two subagents
+and three small local scripts. Drop it into **any** project, or install it as a plugin.
 
 ```
-You:    Evaluate the skill at ./.claude/skills/my-skill
-Claude: → reads my-skill/SKILL.md, derives 3 tasks
-        → runs each task WITH vs WITHOUT the skill (subagents)
-        → measures token deltas from the transcript
-        → scores quality with a blind judge subagent
-        → writes reports/my-skill-eval-1.md
-                 + reports/my-skill-eval-1-records.md  (verbatim A/B outputs)
+You:    Evaluate skills ./caveman and ./code-map combined
+Claude: → 2×2 factorial arms: none / caveman / code-map / both
+        → measures each arm's cost-weighted tokens from the transcript
+        → interaction = combined effect − (caveman + code-map alone)
+        → blind judge: combo vs none, and combo vs the best single skill
+        → writes reports/caveman+code-map-combo-eval-1.md
 
+        Verdict: redundant — stacked, they save no more than code-map alone.
+
+You:    Evaluate the skill at ./.claude/skills/my-skill   # single-skill mode
+Claude: → runs the task WITH vs WITHOUT the skill, scores tokens + quality
         Verdict: saved ~1.8k tokens/task on average; quality WITH won 2/3.
 ```
 
