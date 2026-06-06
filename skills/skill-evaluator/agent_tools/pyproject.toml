@@ -1,0 +1,31 @@
+[project]
+name = "skill-evaluator-tools"
+version = "0.1.0"
+description = "Standalone helper scripts for skill-evaluator (token attribution + deepeval metrics)."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "skill-evaluator contributors" }]
+keywords = ["claude-code", "skills", "evaluation", "ab-testing", "deepeval"]
+
+# Core scripts (transcript_tokens.py) need NOTHING beyond the standard library.
+# Keep this empty so the core evaluation runs with a bare Python interpreter.
+dependencies = []
+
+[project.optional-dependencies]
+# Extra deps for the deepeval_runner.py path (a required workflow phase, but its
+# libraries aren't needed by the stdlib-only token tooling). deepeval >=4 is
+# required for the `deepeval.models.AnthropicModel` API; the judge backend is
+# pinned to Anthropic/Claude, so pull in the Anthropic SDK explicitly — deepeval
+# has no "[anthropic]" extra.
+deepeval = ["deepeval>=4", "anthropic>=0.40.0"]
+
+[project.scripts]
+skilleval-tokens = "transcript_tokens:main"
+
+[tool.setuptools]
+py-modules = ["transcript_tokens", "deepeval_runner"]
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"

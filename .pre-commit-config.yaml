@@ -1,0 +1,30 @@
+# Pre-commit hooks for skill-evaluator.
+#
+#   Enable once:   python -m pre_commit install
+#   Run manually:  python -m pre_commit run --all-files
+#
+# This repo is mostly Markdown (the skill + subagent prompts and docs) plus two
+# stdlib-only Python scripts in skills/skill-evaluator/agent_tools/.
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]   # preserve Markdown hard line breaks
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+      - id: detect-private-key                 # guard against committing the .env secret
+      - id: mixed-line-ending
+        args: [--fix=lf]                       # .gitattributes normalizes to LF...
+        exclude: \.ps1$                        # ...except PowerShell scripts (CRLF)
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.16
+    hooks:
+      - id: ruff-check                         # lint (includes pyflakes F-rules)
+        args: [--fix]
+      - id: ruff-format                        # format the agent_tools scripts

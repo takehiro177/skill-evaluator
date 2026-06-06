@@ -1,0 +1,52 @@
+# ---- Evaluation output ----
+# Generated reports & run artifacts (keep the folder, ignore contents)
+reports/*
+!reports/.gitkeep
+# Tracked worked example referenced by the docs (a real evaluation run).
+!reports/caveman-eval-1.md
+!reports/caveman-eval-1-records.md
+!reports/caveman-eval-1.deepeval.md
+!reports/caveman-eval-1.deepeval.json
+!reports/caveman-eval-1.deepeval.cases.json
+*.eval.json
+*.eval.md
+
+# ---- Python (agent_tools) ----
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+.eggs/
+*.egg-info/
+build/
+dist/
+.uv/
+uv.lock
+
+# deepeval local cache / telemetry
+.deepeval/
+.deepeval_cache.json
+.deepeval-cache.json
+temp_test_run_data.json
+
+# ---- Secrets / local config ----
+.env
+.env.*
+!.env.example
+*.local
+
+# ---- Editors / OS ----
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---- Claude Code local state (do not commit machine-specific state) ----
+.claude/settings.local.json
+.claude/projects/
+.claude/todos/
+.claude/shell-snapshots/
