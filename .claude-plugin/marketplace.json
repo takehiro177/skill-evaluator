@@ -1,0 +1,14 @@
+{
+  "name": "takehiro177",
+  "owner": {
+    "name": "Takehiro Ohashi",
+    "url": "https://github.com/takehiro177"
+  },
+  "plugins": [
+    {
+      "name": "skill-evaluator",
+      "source": "./",
+      "description": "Blind A/B evaluation of Claude Code skills, with multi-skill interaction analysis (synergy / redundancy / conflict)."
+    }
+  ]
+}

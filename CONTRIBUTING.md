@@ -10,8 +10,9 @@ See [`docs/architecture.md`](docs/architecture.md). In short:
 
 - `skills/skill-evaluator/SKILL.md` — the orchestrator prompt/procedure.
 - `agents/*.md` — the runner and blind-judge subagent prompts.
-- `skills/skill-evaluator/agent_tools/*.py` — token attribution (stdlib) and
-  the deepeval metrics runner, bundled inside the skill.
+- `skills/skill-evaluator/agent_tools/*.py` — token attribution and multi-skill
+  interaction effects (both stdlib) plus the deepeval metrics runner, bundled
+  inside the skill.
 
 ## Ground rules for changes
 
@@ -23,10 +24,11 @@ these invariants in any change:
 2. **Tokens come from the transcript.** Never estimate, never let the model
    invent token counts. Unattributable arms are reported as `unmeasured`.
 3. **The skill is the only manipulated variable** between WITH and WITHOUT arms.
-4. **The token half stays stdlib-only.** `transcript_tokens.py` must run on a
-   bare Python interpreter (no third-party imports). deepeval is a required
-   phase, but it must degrade to an `unavailable` report section — never a hard
-   crash — when its deps or `ANTHROPIC_API_KEY` are missing.
+4. **The token half stays stdlib-only.** `transcript_tokens.py` and
+   `interaction_effects.py` must run on a bare Python interpreter (no third-party
+   imports; `interaction_effects.py` may import only `transcript_tokens.py`).
+   deepeval is a required phase, but it must degrade to an `unavailable` report
+   section — never a hard crash — when its deps or `ANTHROPIC_API_KEY` are missing.
 5. **Negatives are reported honestly.** Don't bias the prompts toward "the skill
    helped".
 
@@ -46,15 +48,18 @@ python -m pre_commit run --all-files    # optional: run across the whole repo no
 
 ```bash
 cd skills/skill-evaluator/agent_tools
-python -m pyflakes transcript_tokens.py deepeval_runner.py   # or your linter
+python -m pyflakes transcript_tokens.py interaction_effects.py deepeval_runner.py   # or your linter
 python transcript_tokens.py --help
+python interaction_effects.py --help
 ```
 
 (`python` here is `python3` on macOS/Linux and `python`/`py` on Windows — the
 scripts are stdlib-only and target Python ≥3.9.)
 
-`transcript_tokens.py` must not import anything outside the standard library.
-If you add fields, read them defensively — Claude Code's transcript schema
+`transcript_tokens.py` and `interaction_effects.py` must not import anything
+outside the standard library (`interaction_effects.py` may import only its sibling
+`transcript_tokens.py`). If you add fields, read them defensively — Claude Code's
+transcript schema
 changes between versions.
 
 ## Submitting

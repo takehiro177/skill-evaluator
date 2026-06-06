@@ -12,6 +12,11 @@ subagent, and writes a Markdown report.
 No SaaS, no API server, no harness to run — just a Claude Code skill plus two
 subagents and two tiny local scripts. Drop it into **any** project.
 
+**New in 0.2 —** point it at *two or more* skills and it measures their
+**interaction** when combined: synergy, redundancy, or conflict, the impact that
+single-skill testing never captures. See
+[Evaluate skills combined](#evaluate-skills-combined-multi-skill-interaction).
+
 ```
 You:    Evaluate the skill at ./.claude/skills/my-skill
 Claude: → reads my-skill/SKILL.md, derives 3 tasks
@@ -110,6 +115,21 @@ step; the skill is Markdown plus two stdlib Python scripts.)
 > Prefer not to run a script? Just copy `skills/skill-evaluator` into
 > `.claude/skills/` and the two `agents/*.md` files into `.claude/agents/`.
 
+### …or install as a Claude Code plugin
+
+This repo ships a `.claude-plugin/` manifest, so it doubles as an installable
+plugin **and** its own marketplace — versioned updates, one command, no copying:
+
+```
+/plugin marketplace add takehiro177/skill-evaluator
+/plugin install skill-evaluator@takehiro177
+```
+
+The plugin bundles the `skill-evaluator` skill (with its `agent_tools/` +
+`templates/`) and both `skill-eval-*` subagents. To try it locally before
+installing, run `claude --plugin-dir .` from the repo root (and
+`claude plugin validate . --strict` to check the manifest).
+
 ## Usage
 
 Open Claude Code in a project where the skill is installed and ask in plain
@@ -130,6 +150,31 @@ Options the orchestrator understands:
 | `from history` / `--from-history` | Also mine your past sessions for real tasks. |
 | `skip deepeval` / `--no-deepeval` | deepeval runs by default (required); use this to skip it. |
 | `write the report to PATH` / `--report PATH` | Custom report path. |
+| `--leave-one-out` | **(combination)** add an arm per skill dropped, for each skill's marginal contribution. |
+| `--full-factorial` | **(combination)** run every subset (2ᴺ arms) for the complete interaction map. |
+
+### Evaluate skills *combined* (multi-skill interaction)
+
+Skills rarely run alone. Point the evaluator at **two or more** skills and it
+measures their **interaction** — whether stacking them helps beyond the sum of the
+parts (**synergy**), merely duplicates (**redundancy**), or actively fights
+(**conflict**) — the impact that single-skill evaluation never captures:
+
+```
+Evaluate skills ./.claude/skills/caveman and ./.claude/skills/code-map combined
+Do my "terse" and "exhaustive" skills work together or conflict?
+Evaluate skills A, B and C combined --leave-one-out
+Measure the interaction of skill-x and skill-y with 5 tasks
+```
+
+It runs the same blind, injection-based A/B, but an arm is now defined by the
+*subset* of skills injected. The default is cheap — a full 2×2 factorial for two
+skills (the exact interaction term), or combined-vs-baseline for three or more
+(the bundle's overall effect); add `--leave-one-out` / `--full-factorial` to
+attribute the effect per skill. You get a combination report with an **interaction
+decomposition** (combined / individual / marginal / interaction, cost-weighted) and
+**two judge calls** — combo vs none, and combo vs the *best single skill*. Details:
+[`docs/combination-eval.md`](docs/combination-eval.md).
 
 ### Try it on the bundled example
 
@@ -190,16 +235,18 @@ skill-evaluator/
 │   ├── SKILL.md                      #   the procedure you invoke
 │   ├── agent_tools/                  #   bundled helper scripts, installed with it
 │   │   ├── transcript_tokens.py      #     token attribution (stdlib only)
+│   │   ├── interaction_effects.py    #     multi-skill interaction effects (stdlib only)
 │   │   ├── deepeval_runner.py        #     deepeval metrics (required)
 │   │   ├── pyproject.toml
 │   │   └── README.md
 │   └── templates/
-│       ├── report-template.md        #   the summary report
+│       ├── report-template.md        #   the single-skill summary report
+│       ├── combo-report-template.md  #   the multi-skill combination report
 │       └── records-template.md       #   verbatim WITH/WITHOUT records companion
 ├── agents/
 │   ├── skill-eval-runner.md          # runs one task as one A/B arm
 │   └── skill-eval-judge.md           # blind comparative judge
-├── docs/                             # architecture, methodology, tokens
+├── docs/                             # architecture, methodology, tokens, combination-eval
 ├── examples/caveman/                 # an example skill to evaluate end-to-end
 ├── reports/                          # generated reports land here (gitignored; one sample is tracked)
 ├── install.sh / install.ps1
@@ -213,9 +260,15 @@ This is an **in-chat, small-N** harness. Results are **directional, not
 statistically conclusive** — raise `--tasks` or repeat runs for high-stakes
 calls. It measures *given the skill is applied, does it help?* — not whether the
 skill **triggers** correctly in the wild (for trigger accuracy, see Anthropic's
-`skill-creator` eval tooling). It measures tokens and quality, not latency. See
+`skill-creator` eval tooling). It measures tokens and quality, not latency.
+**Combination mode** is bound by the same limits, plus two of its own: it measures
+the skills *applied together*, **not** whether they would actually **co-trigger**
+on the same real prompt; and the interaction is a *difference of differences*, so
+it is the noisiest figure in a report — repeat it before acting on a borderline
+call. See
 [`docs/methodology.md`](docs/methodology.md#threats-to-validity-and-what-we-do-about-them)
-for the full list and mitigations.
+and [`docs/combination-eval.md`](docs/combination-eval.md) for the full list and
+mitigations.
 
 ## License
 
