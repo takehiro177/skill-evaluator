@@ -2,9 +2,7 @@
 
 > **Cost-weighted A/B *performance* testing for Claude Code skills — one skill, or
 > several *combined*.** It measures real token cost and blind-judged output quality
-> from live runs; it is **not** a static linter or security scanner. *(Looking for
-> static security / quality / compliance analysis? That's a
-> [different tool that shares this name](https://github.com/bjulius/skill-evaluator).)*
+> from live runs; it is **not** a static linter or security scanner.
 
 **Do your Claude Code skills actually earn their context — alone, and stacked together?**
 
