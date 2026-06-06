@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Least-privilege: CI only needs to read the repo.
+permissions:
+  contents: read
+
+# Cancel superseded runs on the same ref (e.g. rapid pushes to a PR).
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pre-commit:
+    name: Lint, format & hygiene (pre-commit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      # Runs every hook in .pre-commit-config.yaml (ruff-check, ruff-format,
+      # trailing-whitespace, detect-private-key, ...). Fails if any hook would
+      # modify a file, so PRs must already be lint-clean and formatted.
+      - uses: pre-commit/action@v3.0.1
+
+  python-tools:
+    name: Python tools (bare-interpreter smoke)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Oldest and newest supported interpreters (pyproject: requires-python >=3.9).
+        python-version: ["3.9", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      # Invariant: transcript_tokens.py must run with NO third-party deps.
+      # No `pip install` here on purpose — a stray non-stdlib import fails CI.
+      - name: transcript_tokens.py imports & runs on stdlib only
+        working-directory: skills/skill-evaluator/agent_tools
+        run: python transcript_tokens.py --help

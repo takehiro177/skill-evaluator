@@ -1,0 +1,65 @@
+name: Bug report
+description: Something in the evaluation workflow behaved incorrectly.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for filing a bug. Please do **not** paste API keys, full
+        transcripts, or other secrets — redact before sharing.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you expect, and what did you get instead?
+      placeholder: "I ran the skill-evaluator on … and the report showed …"
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part?
+      options:
+        - Orchestrator skill (SKILL.md procedure)
+        - Runner subagent (WITH/WITHOUT arms)
+        - Blind judge subagent
+        - Token attribution (transcript_tokens.py)
+        - deepeval runner (deepeval_runner.py)
+        - Install scripts (install.sh / install.ps1)
+        - Docs
+        - Other / not sure
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: The skill prompt you used and the steps you took.
+      placeholder: |
+        1. Invoked the skill on skill X
+        2. …
+    validations:
+      required: true
+  - type: input
+    id: claude-code-version
+    attributes:
+      label: Claude Code version
+      description: "`claude --version` (transcript schema changes between versions)."
+      placeholder: "e.g. 2.x.x"
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: OS / Python
+      placeholder: "e.g. Windows 11, Python 3.12"
+    validations:
+      required: false
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant output
+      description: Error text or report snippet. Redact secrets.
+      render: text
+    validations:
+      required: false

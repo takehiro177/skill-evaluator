@@ -1,0 +1,31 @@
+name: Feature request
+description: Suggest an improvement to the evaluation workflow.
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / motivation
+      description: What's missing or awkward today? What are you trying to measure?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+      description: What would you like it to do?
+    validations:
+      required: true
+  - type: checkboxes
+    id: invariants
+    attributes:
+      label: Trust invariants
+      description: >
+        This tool's value is trustworthy measurement. Please confirm your idea
+        keeps the [CONTRIBUTING](https://github.com/takehiro177/skill-evaluator/blob/main/CONTRIBUTING.md)
+        invariants intact (or explain the trade-off above).
+      options:
+        - label: The judge stays blind (no arm identity / token numbers / the word "skill").
+        - label: Tokens still come from the transcript (never estimated).
+        - label: The skill remains the only manipulated variable between arms.
+        - label: transcript_tokens.py stays stdlib-only.
