@@ -41,8 +41,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      # Invariant: transcript_tokens.py must run with NO third-party deps.
+      # Invariant: the core scripts must run with NO third-party deps.
       # No `pip install` here on purpose — a stray non-stdlib import fails CI.
       - name: transcript_tokens.py imports & runs on stdlib only
         working-directory: skills/skill-evaluator/agent_tools
         run: python transcript_tokens.py --help
+      - name: interaction_effects.py imports & runs on stdlib only
+        working-directory: skills/skill-evaluator/agent_tools
+        run: python interaction_effects.py --help

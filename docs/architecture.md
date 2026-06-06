@@ -54,6 +54,7 @@ one Claude Code session driving subagents, plus two tiny local Python scripts.
 | `agents/skill-eval-runner.md` | Subagent | Solves one task as one arm. Injection-based WITH/WITHOUT. Echoes a RUN MARKER for token attribution. |
 | `agents/skill-eval-judge.md` | Subagent | Blind comparative judge. Sees only task + rubric + two anonymized responses. |
 | `skills/skill-evaluator/agent_tools/transcript_tokens.py` | Python (stdlib) | Reads the session transcript, groups sidechain runs, sums token usage, matches by RUN MARKER. `--full-text` also returns each run's verbatim prompt + output for the records companion. |
+| `skills/skill-evaluator/agent_tools/interaction_effects.py` | Python (stdlib) | **Combination mode.** Combines per-arm token totals (resolved from the transcript by marker) into the interaction between 2+ skills: combined / individual / marginal / pairwise + total interaction, with a synergy/redundancy/conflict classification. |
 | `skills/skill-evaluator/agent_tools/deepeval_runner.py` | Python (deepeval) | Required GEval quality cross-check; degrades to an `unavailable` section without a key/deps. |
 
 ## Key design choices
@@ -80,6 +81,19 @@ one Claude Code session driving subagents, plus two tiny local Python scripts.
   deepeval deps/key missing → its section is marked `unavailable` and the rest of
   the report is still complete. Can't attribute an arm → report it as
   `unmeasured` rather than guessing.
+
+### Combination mode (2+ skills)
+
+When given two or more skills, the same pipeline runs over **skill subsets**: an
+arm injects a defined subset (baseline injects none, combo injects all), tokens are
+attributed per arm exactly as above, and `interaction_effects.py` then combines the
+arms into the **interaction** term — the synergy/redundancy/conflict that
+single-skill evaluation can't see. The blind judge makes two calls (combo vs none,
+combo vs the best single skill), and the orchestrator writes the
+[combination report](../skills/skill-evaluator/templates/combo-report-template.md)
+instead of the single-skill one. The injection-based, transcript-sourced,
+blind-judge invariants are unchanged. See
+[`combination-eval.md`](combination-eval.md).
 
 See [`methodology.md`](methodology.md) for *why* this measures what it claims to,
 and [`token-measurement.md`](token-measurement.md) for the transcript details.

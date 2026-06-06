@@ -22,6 +22,13 @@
 - The small **metrics** table under each title is the at-a-glance scoreboard;
   figures match the report (source: the JSONL).
 
+> **Combination mode (2+ skills).** When a task has more than two arms (factorial /
+> leave-one-out / full-factorial), keep the two-column layout for the **decisive
+> pair — baseline (left) vs combo (right)** — and add the remaining arms
+> (single-skill, leave-one-out, …) as their own labelled `<pre>` blocks below the
+> table, each titled with its injected subset and RUN MARKER. The metrics table
+> then carries one row per arm.
+
 **Source transcript:** `<path/to/<session-id>.jsonl>`
 
 ---

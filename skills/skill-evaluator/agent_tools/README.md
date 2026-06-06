@@ -4,15 +4,17 @@ Standalone helper scripts that Claude Code can execute during a skill
 evaluation. This folder is self-contained: it has its own `pyproject.toml` and
 does not depend on anything else in the repo.
 
-There are two tools, with very different requirements:
+There are three tools, with very different requirements:
 
 | Script | Purpose | Dependencies |
 |--------|---------|--------------|
 | `transcript_tokens.py` | Attribute token usage to each subagent (A/B arm) run by parsing the Claude Code session transcript. **Core** — used on every evaluation. | **None** (Python stdlib only) |
+| `interaction_effects.py` | Quantify the **interaction** between 2+ combined skills (combined / individual / marginal / pairwise + total interaction, with a synergy/redundancy/conflict classification). Used in **combination mode**. | **None** (Python stdlib only; imports `transcript_tokens.py`) |
 | `deepeval_runner.py` | Library-backed GEval quality metrics via [`deepeval`](https://github.com/confident-ai/deepeval). **Required** — runs on every evaluation (skip only via `--no-deepeval` or a missing `ANTHROPIC_API_KEY`). | `deepeval`, `anthropic` |
 
-The token half of the evaluation (deltas + blind LLM-as-judge) runs with **only**
-the stdlib script; deepeval adds a complementary library-backed quality score and
+The token half of the evaluation (deltas, interaction effects, and the blind
+LLM-as-judge) runs with **only** the stdlib scripts; deepeval adds a complementary
+library-backed quality score and
 is now a **required phase** of every evaluation, with its results kept in
 `reports/` (`<skill-name>-eval-<n>.deepeval.{json,md}`).
 
@@ -41,6 +43,32 @@ python transcript_tokens.py --project /path/to/other/project
 It auto-detects `~/.claude/projects/<encoded-cwd>/<latest>.jsonl` (honoring
 `CLAUDE_CONFIG_DIR`). See [`docs/token-measurement.md`](../../../docs/token-measurement.md)
 for the transcript format and the attribution algorithm.
+
+## `interaction_effects.py` (no install) — combination mode
+
+Used when evaluating **two or more skills combined**. Where `transcript_tokens.py`
+attributes tokens to one arm, this combines the per-arm numbers into the
+**interaction** between skills — the part single-skill testing misses. It reads a
+JSON *spec* mapping each arm's skill `subset` to its RUN MARKER, resolves the
+tokens from the transcript, and reports the combined effect, each skill's
+individual/marginal effect, pairwise + total interaction (excess-over-additive),
+and a classification (synergistic / additive / redundant / conflicting /
+costs-more). Stdlib-only — it imports `transcript_tokens.py` and needs nothing else.
+
+```bash
+# Markdown report from a spec the workflow wrote (schema in the script's docstring):
+python interaction_effects.py reports/caveman+code-map-combo-eval-1.spec.json
+
+# Machine-readable, on the skill's billing axis instead of the cost headline:
+python interaction_effects.py spec.json --json --metric output_tokens
+
+# Durable result files next to the report (writes <out>.json and <out>.md):
+python interaction_effects.py spec.json --out reports/caveman+code-map-combo-eval-1.interaction
+```
+
+See [`docs/combination-eval.md`](../../../docs/combination-eval.md) for the designs
+(combined-vs-baseline / factorial / leave-one-out / full-factorial), the
+interaction formula, and the classification rules.
 
 ## `deepeval_runner.py` (required)
 

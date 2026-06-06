@@ -91,10 +91,26 @@ against the rubric rather than personal taste.
 | **Wrong axis for the mechanism** | Phase 0 classifies the skill's mechanism; the metric matches it (output vs context vs round-trips). |
 | **Run-to-run variance** | Acknowledged; repeats recommended for high-stakes calls. Stochastic outputs mean a single run is a sample, not the truth. |
 
+## Combining skills
+
+The same method extends to **two or more skills at once**: an arm is defined by the
+*subset* of skills injected into it, and the per-arm token/quality numbers are
+combined into an **interaction** term — whether stacking the skills helps beyond the
+sum of the parts (synergy), merely duplicates (redundancy), or conflicts. The
+injection-based design, transcript-sourced cost-weighting, and blind judge are all
+unchanged; only the arm definition and the analysis grow. The dedicated methodology
+— designs (combined-vs-baseline / factorial / leave-one-out / full-factorial), the
+interaction formula, and the classification — lives in
+[`combination-eval.md`](combination-eval.md).
+
 ## What this does *not* establish
 
-- Statistical significance (N is small by design — it's an in-chat harness).
+- Statistical significance (N is small by design — it's an in-chat harness). The
+  combination **interaction** is a *difference of differences*, so it is the
+  noisiest figure of all — repeat it before acting on a borderline call.
 - That the skill triggers correctly in the wild (this tests *given* the skill is
   applied, does it help — a separate question from trigger accuracy; for that,
-  see the `skill-creator` skill's eval tooling).
+  see the `skill-creator` skill's eval tooling). In combination mode this also
+  means the skills are measured *applied together*, **not** whether they would
+  actually **co-trigger** on the same real prompt.
 - Anything about latency or wall-clock time — only tokens and quality.

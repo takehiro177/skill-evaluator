@@ -8,6 +8,10 @@ description: >-
   derive representative tasks, runs each task WITH and WITHOUT the skill via
   subagents, measures token deltas from the session transcript, scores quality
   with a blind LLM-as-judge subagent, and writes a Markdown evaluation report.
+  Also evaluates TWO OR MORE skills COMBINED, quantifying their interaction
+  (synergy, redundancy, or conflict) when stacked — use when the user asks to
+  "evaluate skills combined", "A/B test multiple skills", "measure skill
+  interaction/synergy", "do these skills work together", or points at 2+ skills.
 ---
 
 # Skill Evaluator
@@ -20,6 +24,13 @@ along two axes:
    skill's guidance vs WITHOUT it (measured from the real session transcript).
 2. **Output quality** — scored by a **blind LLM-as-judge** subagent that never
    learns which response came from which arm.
+
+**Two modes.** *Single-skill* (default) measures one skill WITH vs WITHOUT.
+*Combination* measures **2+ skills applied together** and quantifies their
+**interaction** — whether stacking them helps beyond the sum of the parts (synergy),
+merely duplicates (redundancy), or actively conflicts. The phases below describe
+single-skill mode; **[Combination mode](#combination-mode-2-skills)** at the end
+lists exactly what changes when more than one skill is given.
 
 Everything runs through Claude Code subagents. You (the orchestrator) own the
 secret arm→label mapping; the judge never sees it. Be rigorous, be honest, and
@@ -38,6 +49,13 @@ The user points you at a skill to evaluate. Accept any of:
 - A skill name — search `./.claude/skills/`, `~/.claude/skills/`, and any
   plugin skill dirs for a matching `SKILL.md`.
 
+**Multiple skills → combination mode.** If the user names **two or more** skills
+(e.g. "evaluate skills A and B combined", "do X and Y work together"), resolve each
+the same way and run **[Combination mode](#combination-mode-2-skills)** instead of
+the single-skill procedure. Default design: full 2×2 factorial for exactly two
+skills, combined-vs-baseline for three or more (override with `--leave-one-out` /
+`--full-factorial`).
+
 Optional knobs (ask only if ambiguous; otherwise use defaults):
 
 | Knob              | Default | Meaning                                             |
@@ -46,6 +64,8 @@ Optional knobs (ask only if ambiguous; otherwise use defaults):
 | `--from-history`  | off     | Also mine the user's past sessions for real tasks.  |
 | `--no-deepeval`   | off     | Skip the deepeval metrics. deepeval runs by **default** — it is a REQUIRED phase (Phase 6). Only skip if no `ANTHROPIC_API_KEY` / deps are available, and then say so explicitly in the report. |
 | `--report PATH`   | auto    | Where to write the report (default `reports/`).     |
+| `--leave-one-out` | off     | **(combination)** Add an arm per skill *dropped* from the full stack, to measure each skill's marginal contribution. N + 2 arms. |
+| `--full-factorial`| off     | **(combination)** Run *every* subset (2ᴺ arms) for the complete interaction map. Warn the user before N ≥ 4. |
 
 ---
 
@@ -409,6 +429,125 @@ as a complementary cross-check, never as a replacement, and print the
 
 ---
 
+## Combination mode (2+ skills)
+
+When the user points you at **two or more** skills, you evaluate them *together*
+and measure their **interaction** — the impact single-skill A/B never captures.
+Everything from single-skill mode carries over (injection-based arms,
+transcript-sourced **cost-weighted** tokens, the blind judge, deepeval, every
+integrity rule); the one change is that **an arm is now defined by the *subset* of
+skills injected into it**, and two new artifacts are produced. The methodology is
+[`docs/combination-eval.md`](../../docs/combination-eval.md).
+
+### Design — how many arms
+
+Let **N** = number of skills. Pick the design (user may override):
+
+| N / flag | Design | Arms / task | Subsets run |
+|---|---|---|---|
+| N = 2 (default) | **factorial-2** | 4 | ∅, {A}, {B}, {A,B} |
+| N ≥ 3 (default) | **combined-vs-baseline** | 2 | ∅, {all} |
+| `--leave-one-out` | leave-one-out | N + 2 | ∅, {all}, and {all}\{i} for each skill |
+| `--full-factorial` | full-factorial | 2ᴺ | every subset |
+
+`combined-vs-baseline` is the cheap default for 3+ skills: it answers "does the
+bundle help?" but **cannot** attribute the effect to a skill or compute an
+interaction term. Say so, and offer `--leave-one-out` / `--full-factorial` when the
+user wants per-skill attribution. Warn before running full-factorial for N ≥ 4
+(16+ arms × tasks).
+
+### Phase 0 (combination) — mechanism overlap
+
+Run Phase 0 for **each** skill. Then add an **overlap prior** by comparing their
+mechanisms (Phase 0.4): same axis (e.g. two `output` reducers) ⇒ expect redundancy
+or conflict; different axes (e.g. `output` + `context`) ⇒ expect roughly additive.
+State the prior — the measured interaction will confirm or refute it.
+
+### Phase 1 (combination) — tasks that engage every skill
+
+Derive tasks inside the **overlap of the skills' claim surfaces** so the
+combination can actually engage. A task only one skill can help with cannot reveal
+interaction; each task must be able to exercise all the skills at once (most of
+them, for leave-one-out).
+
+### Phase 2 (combination) — subset injection + markers
+
+For each task, dispatch one `skill-eval-runner` per arm in the design. Each arm
+injects the bodies of **exactly the skills in its subset**, each in its own
+**labelled** guidance block, in a fixed order:
+
+```
+You have the following skill guidance available. Apply ALL of it as intended:
+
+<<<SKILL GUIDANCE [<skill-a name>]
+<skill-a body>
+SKILL GUIDANCE>>>
+
+<<<SKILL GUIDANCE [<skill-b name>]
+<skill-b body>
+SKILL GUIDANCE>>>
+```
+
+The baseline arm injects **no** guidance block; the combo arm injects **all**.
+Mint a unique marker per (task, subset): `SKILLEVAL-t1-BASE-<rand>`,
+`SKILLEVAL-t1-S<i>-<rand>` (single skill *i*), `SKILLEVAL-t1-NOT<i>-<rand>`
+(leave-one-out, all but *i*), `SKILLEVAL-t1-COMBO-<rand>`. Keep the private
+subset→marker map in your notes, and **randomize arm order**. **Warm the cache +
+run arms serially** and **amortize one-time setup** exactly as in single-skill
+Phase 2 — these matter *more* here because more arms share the prefix.
+
+### Phase 3 (combination) — interaction effects
+
+Pull each arm's tokens with `transcript_tokens.py --grep "<marker>" --cost` as
+usual. Then write a **spec file** (schema in the script's docstring) mapping every
+arm's `subset` + `marker`, and run the new helper:
+
+```
+python agent_tools/interaction_effects.py reports/<combo>-combo-eval-<n>.spec.json \
+  --out reports/<combo>-combo-eval-<n>.interaction
+```
+
+It resolves each marker from the transcript and computes, per task and aggregated:
+the **combined effect**, each skill's **individual effect** (factorial), **marginal
+contribution** (leave-one-out), **pairwise** + **total interaction**
+(excess-over-additive), and a **classification** (synergistic / additive /
+redundant / conflicting / costs-more). Re-run with `--metric output_tokens` (etc.)
+to view the effects on the skills' billing axis as well as the cost-weighted
+headline. **Never compute the interaction by hand** — the helper sources every arm
+from the transcript; an arm it cannot attribute is `unmeasured`, not guessed.
+
+### Phase 4 (combination) — two decisive judge comparisons
+
+Keep the judge blind and pairwise, but make the two comparisons that matter for a
+stack, **per task**:
+
+1. **combo vs none** — combo arm vs baseline arm (does the stack help at all?).
+2. **combo vs best single skill** — combo arm vs the single-skill arm with the best
+   solo result (factorial / full-factorial / leave-one-out only; skip if no single
+   arms exist). If the combination loses here, the extra skills are dead weight or
+   harmful *regardless of the token numbers*.
+
+Randomize Response 1/2 independently for each comparison; un-blind privately after.
+
+### Phase 5 / 5b (combination) — combo report + records
+
+Write the report with [`templates/combo-report-template.md`](templates/combo-report-template.md)
+to `reports/<combo>-combo-eval-<n>.md` (name `<combo>` like `<skill-a>+<skill-b>`).
+**Headline the combined effect and the interaction/classification jointly with
+quality** (combo vs none *and* combo vs best single) — a token synergy with a
+quality regression, or a combo the judge rates below a single skill, is a
+regression, not a win. Write the verbatim records companion
+`reports/<combo>-combo-eval-<n>-records.md` from the transcript as in single-skill
+mode; with >2 arms, lead with baseline vs combo side by side and list the remaining
+arms below.
+
+### Phase 6 (combination) — deepeval
+
+Required, as always. Score **every arm** (base / each single / combo) and fold the
+per-arm GEval table into the report's deepeval section.
+
+---
+
 ## Integrity rules (do not violate)
 
 - **Never fabricate tokens or scores.** Transcript or it didn't happen; judge
@@ -436,6 +575,12 @@ as a complementary cross-check, never as a replacement, and print the
   (Phase 6) and keep its `*.deepeval.{json,md,cases.json}` outputs in `reports/`;
   the report must carry the deepeval section. If it cannot run, mark it
   `unavailable — <reason>` — never silently skip or delete its outputs.
+- **Combination = interaction, sourced.** When combining skills, the headline must
+  include the **interaction** (synergy / redundancy / conflict) from
+  `interaction_effects.py`, computed from transcript-attributed arms — never
+  estimated by hand. Report a combo that loses to its best single skill as a
+  regression. A `combined-vs-baseline` run reports **no** interaction term — say so
+  plainly rather than implying one.
 
 ## Related files
 
@@ -446,7 +591,12 @@ Bundled inside this skill's own directory (they travel with it on install):
   cost-weighted view.
 - `agent_tools/deepeval_runner.py` — deepeval GEval metrics (a **REQUIRED** phase;
   run with `--with deepeval --with anthropic`; outputs kept in `reports/`).
-- `templates/report-template.md` — report skeleton.
+- `agent_tools/interaction_effects.py` — **(combination mode)** multi-skill
+  interaction effects (combined / individual / marginal / interaction +
+  classification) from the transcript; stdlib-only, no deps.
+- `templates/report-template.md` — single-skill report skeleton.
+- `templates/combo-report-template.md` — **(combination mode)** multi-skill report
+  skeleton (interaction decomposition + synergy verdict).
 - `templates/records-template.md` — verbatim WITH/WITHOUT records companion.
 
 Installed alongside the skill or kept in the source repo:
@@ -455,4 +605,7 @@ Installed alongside the skill or kept in the source repo:
   judge subagents (installed into `.claude/agents/`).
 - `docs/token-accuracy.md` — the six rules for token-accurate evaluation
   (mechanism, cost-weighting, production conditions, joint verdict).
+- `docs/combination-eval.md` — **(combination mode)** designs, the interaction
+  formula, classification, and the honest scope (combination-when-applied, not
+  co-triggering).
 - `docs/methodology.md`, `docs/token-measurement.md`, `docs/architecture.md`.
