@@ -1,7 +1,7 @@
 {
   "name": "skill-evaluator",
-  "version": "0.2.0",
-  "description": "Blind A/B evaluation of Claude Code skills — token cost + quality, plus multi-skill interaction (synergy / redundancy / conflict). Runs entirely in-chat.",
+  "version": "0.2.1",
+  "description": "Cost-weighted A/B performance testing for Claude Code skills — and the interaction (synergy / redundancy / conflict) when skills are combined. Blind-judged quality + transcript-sourced token economics, entirely in-chat. (Not a static linter/security scanner.)",
   "author": {
     "name": "Takehiro Ohashi",
     "url": "https://github.com/takehiro177"
@@ -10,11 +10,14 @@
   "repository": "https://github.com/takehiro177/skill-evaluator",
   "license": "MIT",
   "keywords": [
-    "evaluation",
+    "skill-evaluation",
+    "skill-interaction",
+    "skill-combination",
+    "multi-skill",
+    "synergy",
     "ab-testing",
-    "skills",
-    "tokens",
-    "interaction",
+    "cost-weighted-tokens",
+    "blind-judge",
     "deepeval"
   ]
 }
