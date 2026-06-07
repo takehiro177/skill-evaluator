@@ -8,6 +8,16 @@ reports/*
 !reports/caveman-eval-1.deepeval.md
 !reports/caveman-eval-1.deepeval.json
 !reports/caveman-eval-1.deepeval.cases.json
+# Tracked worked example for combination mode (caveman + karpathy, a real run).
+!reports/caveman+karpathy-combo-eval-1.md
+!reports/caveman+karpathy-combo-eval-1-records.md
+!reports/caveman+karpathy-combo-eval-1.deepeval.md
+!reports/caveman+karpathy-combo-eval-1.deepeval.json
+!reports/caveman+karpathy-combo-eval-1.deepeval.cases.json
+!reports/caveman+karpathy-combo-eval-1.interaction.md
+!reports/caveman+karpathy-combo-eval-1.interaction.json
+!reports/caveman+karpathy-combo-eval-1.judge.verdicts.md
+!reports/caveman+karpathy-combo-eval-1.judge.verdicts.json
 *.eval.json
 *.eval.md
 
