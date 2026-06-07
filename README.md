@@ -188,11 +188,12 @@ Evaluate the skill at ./examples/caveman
 
 See [`examples/README.md`](examples/README.md).
 
-> **Note — `caveman` is a third-party skill, bundled here only as an example.**
-> It is the work of Julius Brussee; the official, maintained source is
-> <https://github.com/JuliusBrussee/caveman> (MIT). The copy under
-> [`examples/caveman/`](examples/caveman/) is a snapshot for demonstration — refer
-> to the upstream repo for the canonical version and any updates.
+> **Note — the bundled `examples/` skills are third-party, included only as
+> samples.** `caveman` is the work of Julius Brussee
+> (<https://github.com/JuliusBrussee/caveman>, MIT); `karpathy-guidelines` is the
+> work of `forrestchang` (<https://github.com/forrestchang/andrej-karpathy-skills>,
+> MIT). The copies under [`examples/`](examples/) are snapshots for demonstration —
+> refer to each upstream repo for the canonical version and any updates.
 
 ## What you get
 
@@ -280,12 +281,20 @@ mitigations.
 
 ### Third-party software
 
-**Bundled as an example.** [`examples/caveman/`](examples/caveman/) is a snapshot
-of the third-party **caveman** skill by Julius Brussee, included solely as a
-sample to evaluate. It is MIT-licensed and its license is kept alongside it at
-[`examples/caveman/LICENSE`](examples/caveman/LICENSE); the canonical, maintained
-source is <https://github.com/JuliusBrussee/caveman>. No other third-party source
-is vendored in this repository.
+**Bundled as examples.** Two third-party skills are vendored under
+[`examples/`](examples/), each solely as a sample to evaluate, each MIT-licensed
+with its license kept alongside it:
+
+- [`examples/caveman/`](examples/caveman/) — the **caveman** skill by Julius
+  Brussee ([`LICENSE`](examples/caveman/LICENSE); canonical source
+  <https://github.com/JuliusBrussee/caveman>).
+- [`examples/karpathy-guidelines/`](examples/karpathy-guidelines/) — the
+  **karpathy-guidelines** skill by `forrestchang` (the *andrej-karpathy-skills*
+  project; MIT per the skill's frontmatter,
+  [`LICENSE`](examples/karpathy-guidelines/LICENSE); canonical source
+  <https://github.com/forrestchang/andrej-karpathy-skills>).
+
+No other third-party source is vendored in this repository.
 
 **Integrated, not bundled.** The one external library the tooling calls is
 installed separately by the user, never vendored here:
