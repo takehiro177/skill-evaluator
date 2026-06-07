@@ -1,0 +1,242 @@
+{
+  "meta": {
+    "skills": [
+      "caveman",
+      "karpathy"
+    ],
+    "design": "factorial-2"
+  },
+  "verdicts": [
+    {
+      "job_id": "t1__combo_vs_none",
+      "task": "t1",
+      "label": "combo_vs_none",
+      "arm_response_1": "combo",
+      "arm_response_2": "base",
+      "winner_arm": "base",
+      "margin": "slight",
+      "scores": {
+        "combo": 9.0,
+        "base": 9.0
+      },
+      "rationale": "Both nail every criterion; Response 2 edges ahead by also offering the canonical list(dict.fromkeys(items)) one-liner. Slight margin."
+    },
+    {
+      "job_id": "t1__combo_vs_caveman",
+      "task": "t1",
+      "label": "combo_vs_caveman",
+      "arm_response_1": "combo",
+      "arm_response_2": "caveman",
+      "winner_arm": "combo",
+      "margin": "slight",
+      "scores": {
+        "combo": 9.0,
+        "caveman": 9.0
+      },
+      "rationale": "Both fully correct; Response 2's extra second implementation pushes slightly against minimalism. Response 1 wins slight."
+    },
+    {
+      "job_id": "t1__combo_vs_karpathy",
+      "task": "t1",
+      "label": "combo_vs_karpathy",
+      "arm_response_1": "karpathy",
+      "arm_response_2": "combo",
+      "winner_arm": "tie",
+      "margin": "slight",
+      "scores": {
+        "karpathy": 9.0,
+        "combo": 9.0
+      },
+      "rationale": "Identical correct solutions satisfying all criteria; differences purely stylistic. Effectively tied."
+    },
+    {
+      "job_id": "t1__single_caveman_vs_karpathy",
+      "task": "t1",
+      "label": "single_caveman_vs_karpathy",
+      "arm_response_1": "caveman",
+      "arm_response_2": "karpathy",
+      "winner_arm": "caveman",
+      "margin": "slight",
+      "scores": {
+        "caveman": 9.0,
+        "karpathy": 9.0
+      },
+      "rationale": "Both satisfy every criterion; Response 1 supplies a working fallback while Response 2 only mentions it. Slight edge."
+    },
+    {
+      "job_id": "t2__combo_vs_none",
+      "task": "t2",
+      "label": "combo_vs_none",
+      "arm_response_1": "base",
+      "arm_response_2": "combo",
+      "winner_arm": "base",
+      "margin": "clear",
+      "scores": {
+        "base": 9.0,
+        "combo": 7.0
+      },
+      "rationale": "Response 2 accepts age==0 (range 0-150), violating the rubric's reject-non-positive-age; Response 1 enforces 0<age<150 and states rules more explicitly. Clear win."
+    },
+    {
+      "job_id": "t2__combo_vs_caveman",
+      "task": "t2",
+      "label": "combo_vs_caveman",
+      "arm_response_1": "combo",
+      "arm_response_2": "caveman",
+      "winner_arm": "combo",
+      "margin": "slight",
+      "scores": {
+        "combo": 9.0,
+        "caveman": 8.0
+      },
+      "rationale": "Response 1 is more faithfully surgical (no input mutation, neutral bounds); Response 2 adds normalization and stricter policy bounds. Slight edge to Response 1."
+    },
+    {
+      "job_id": "t2__combo_vs_karpathy",
+      "task": "t2",
+      "label": "combo_vs_karpathy",
+      "arm_response_1": "combo",
+      "arm_response_2": "karpathy",
+      "winner_arm": "combo",
+      "margin": "slight",
+      "scores": {
+        "combo": 9.0,
+        "karpathy": 8.0
+      },
+      "rationale": "Both satisfy criteria; Response 1's inclusive age range more defensible and less padding. Slight edge."
+    },
+    {
+      "job_id": "t2__single_caveman_vs_karpathy",
+      "task": "t2",
+      "label": "single_caveman_vs_karpathy",
+      "arm_response_1": "karpathy",
+      "arm_response_2": "caveman",
+      "winner_arm": "karpathy",
+      "margin": "slight",
+      "scores": {
+        "karpathy": 9.0,
+        "caveman": 8.0
+      },
+      "rationale": "Response 1 keeps insert/return surgical and avoids speculative scope; Response 2 normalizes/mutates stored values. Slight edge to Response 1."
+    },
+    {
+      "job_id": "t3__combo_vs_none",
+      "task": "t3",
+      "label": "combo_vs_none",
+      "arm_response_1": "combo",
+      "arm_response_2": "base",
+      "winner_arm": "base",
+      "margin": "slight",
+      "scores": {
+        "combo": 9.25,
+        "base": 9.5
+      },
+      "rationale": "Both correct and satisfy core rubric; Response 2 more explicitly addresses fixed-vs-backoff tradeoff and cleaner demo, but adds scope. Slight edge to Response 2."
+    },
+    {
+      "job_id": "t3__combo_vs_caveman",
+      "task": "t3",
+      "label": "combo_vs_caveman",
+      "arm_response_1": "combo",
+      "arm_response_2": "caveman",
+      "winner_arm": "combo",
+      "margin": "slight",
+      "scores": {
+        "combo": 9.0,
+        "caveman": 8.0
+      },
+      "rationale": "Both correct; Response 1 tighter to task while documenting assumptions; Response 2 adds mild unrequested scope. Slight edge Response 1."
+    },
+    {
+      "job_id": "t3__combo_vs_karpathy",
+      "task": "t3",
+      "label": "combo_vs_karpathy",
+      "arm_response_1": "combo",
+      "arm_response_2": "karpathy",
+      "winner_arm": "karpathy",
+      "margin": "slight",
+      "scores": {
+        "combo": 9.0,
+        "karpathy": 9.0
+      },
+      "rationale": "Functionally equivalent; Response 2 has superior transparency on exceptions param, no-post-final-delay, and how to switch to backoff. Slight edge."
+    },
+    {
+      "job_id": "t3__single_caveman_vs_karpathy",
+      "task": "t3",
+      "label": "single_caveman_vs_karpathy",
+      "arm_response_1": "caveman",
+      "arm_response_2": "karpathy",
+      "winner_arm": "karpathy",
+      "margin": "slight",
+      "scores": {
+        "caveman": 9.25,
+        "karpathy": 9.5
+      },
+      "rationale": "Both correct and avoid delay after final failure; Response 2 better honors minimalism with one justified knob, Response 1 ships backoff+decorator. Slight edge Response 2."
+    }
+  ],
+  "decisions": [
+    {
+      "task": "t1",
+      "combo_vs_none": {
+        "winner_arm": "base",
+        "margin": "slight",
+        "result": "loss"
+      },
+      "combo_arm": "combo",
+      "best_single": "caveman",
+      "combo_vs_best_single": {
+        "best_single": "caveman",
+        "winner_arm": "combo",
+        "margin": "slight",
+        "result": "win"
+      }
+    },
+    {
+      "task": "t2",
+      "combo_vs_none": {
+        "winner_arm": "base",
+        "margin": "clear",
+        "result": "loss"
+      },
+      "combo_arm": "combo",
+      "best_single": "karpathy",
+      "combo_vs_best_single": {
+        "best_single": "karpathy",
+        "winner_arm": "combo",
+        "margin": "slight",
+        "result": "win"
+      }
+    },
+    {
+      "task": "t3",
+      "combo_vs_none": {
+        "winner_arm": "base",
+        "margin": "slight",
+        "result": "loss"
+      },
+      "combo_arm": "combo",
+      "best_single": "karpathy",
+      "combo_vs_best_single": {
+        "best_single": "karpathy",
+        "winner_arm": "karpathy",
+        "margin": "slight",
+        "result": "loss"
+      }
+    }
+  ],
+  "tally": {
+    "combo_vs_none": {
+      "win": 0,
+      "loss": 3,
+      "tie": 0
+    },
+    "combo_vs_best_single": {
+      "win": 2,
+      "loss": 1,
+      "tie": 0
+    }
+  },
+  "missing_results": []
+}

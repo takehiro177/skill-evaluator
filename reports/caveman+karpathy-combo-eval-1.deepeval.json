@@ -1,0 +1,63 @@
+{
+  "results": [
+    {
+      "id": "t1",
+      "scores": {
+        "base": 1.0,
+        "caveman": 1.0,
+        "karpathy": 1.0,
+        "combo": 1.0
+      },
+      "reasons": {
+        "base": "The Actual Output excels on all four evaluation steps. It explicitly identifies the O(n\u00b2) problem ('item not in result' scanning the list) and replaces it with a set-based O(1) membership check, clearly explaining the improvement. First-occurrence order is preserved in the primary solution via the seen/result pattern, and the dict.fromkeys alternative is noted as also preserving insertion order. The hashability requirement is explicitly addressed with a note about unhashable types (lists/dicts) and the fallback needed. The solution remains minimal and correct, producing the same deduplicated output without adding unrelated features or speculative parameters.",
+        "caveman": "The Actual Output excels on all four evaluation steps. It clearly identifies the O(n\u00b2) problem (list membership scan) and replaces it with O(1) set-based lookup, satisfying step 1. It explicitly states 'Order preserved' and uses dict.fromkeys which maintains insertion order in Python 3.7+, satisfying step 2. It directly addresses hashability requirements with 'Needs hashable items' and provides a fallback for unhashable types, satisfying step 3. The solution is minimal and correct \u2014 it produces the same deduplicated result as the original without adding unrelated features or speculative parameters, satisfying step 4. The response is concise, accurate, and covers all relevant considerations.",
+        "karpathy": "The Actual Output fully satisfies all four evaluation steps. It explicitly identifies the O(n\u00b2) problem and replaces the list membership test with a set-based O(1) check, achieving O(n) overall complexity. It preserves first-occurrence order and explicitly states this matches the original behavior. It clearly notes the hashability assumption required for the set-based approach and even mentions the unhashable case. The solution is minimal and correct, producing the same deduplicated output as the original without adding unrelated features or speculative parameters.",
+        "combo": "The Actual Output fully satisfies all four evaluation steps. It replaces the O(n\u00b2) 'if item not in result' with an O(1) set-based lookup (step 1), explicitly states 'Order preserved' and maintains first-occurrence order in the implementation (step 2), directly addresses the hashability requirement with a note about unhashable types like lists/dicts and suggests a workaround (step 3), and the rewrite is minimal and correct \u2014 producing the same deduplicated output without adding unrelated features or speculative parameters (step 4)."
+      }
+    },
+    {
+      "id": "t2",
+      "scores": {
+        "base": 1.0,
+        "caveman": 0.6,
+        "karpathy": 1.0,
+        "combo": 1.0
+      },
+      "reasons": {
+        "base": "The actual output satisfies all four evaluation steps thoroughly. Step 1: All obviously-bad cases are explicitly caught \u2014 empty/missing username (after strip), malformed email (regex check), non-positive age (0 < age < 150 rejects zero and negatives), and non-integer age (isinstance check with bool exclusion). Step 2: All validation logic is placed before db.insert, ensuring fast failure. Step 3: The original insert/return logic is preserved exactly, with only validation code added above it. Step 4: Validation rules are explicit and clear \u2014 specific conditions for username (non-empty, length 3-30, allowed chars), email (non-empty, regex match), and age (integer, positive, < 150) \u2014 without introducing speculative or overly configurable options. The note about the email regex being intentionally simple is informational, not speculative code.",
+        "caveman": "The ACTUAL_OUTPUT satisfies all three core validation requirements: empty/missing username is checked, malformed email is validated via regex, and non-positive/non-integer age is explicitly rejected. Validation is placed before db.insert, ensuring fail-fast behavior. The insert and return logic remain unchanged. However, the response introduces speculative constraints not implied by the INPUT: a 3-32 character username length limit, a 13-120 age range, bool subclass handling, and email normalization (strip + lowercase). These go beyond what was stated or implied, violating evaluation step 4. The age check also uses a range (13-120) rather than simply rejecting non-positive values, which is a policy guess explicitly acknowledged in the notes. Despite these additions, the core requirements are met and the structure is sound.",
+        "karpathy": "The response excels on all four evaluation steps. It explicitly validates empty/missing username (non-empty string check), malformed email (regex pattern), and non-positive/non-integer age (isinstance check plus range 0 < age < 150). All validation runs before db.insert, satisfying the fail-fast requirement. The original insert/return logic is preserved exactly as-is. Validation rules are clearly stated with explicit assumptions, and no speculative or unused logic is introduced \u2014 the response even explicitly lists what was deliberately omitted. The bonus of rejecting bool subclasses shows careful Python-specific thinking without being over-engineered.",
+        "combo": "The actual output satisfies all four evaluation steps thoroughly. It explicitly catches empty/missing username (step 1), malformed email via regex, non-positive/out-of-range age, and non-integer age including the bool edge case. All validation logic is placed before db.insert (step 2), ensuring fast failure. The insert and return logic from the original function are preserved exactly (step 3). Validation rules are clearly defined with explicit conditions and reasonable assumptions stated upfront, without introducing speculative or overly configurable options (step 4)."
+      }
+    },
+    {
+      "id": "t3",
+      "scores": {
+        "base": 0.9,
+        "caveman": 1.0,
+        "karpathy": 1.0,
+        "combo": 1.0
+      },
+      "reasons": {
+        "base": "The implementation satisfies all four evaluation criteria well. It implements a bounded retry loop (attempts parameter, default 3) and re-raises the last exception after exhaustion without swallowing errors. Key assumptions are made explicit: which exceptions are caught, delay duration, max attempts, and backoff multiplier \u2014 all with sensible defaults. The delay (time.sleep) occurs between attempts but NOT after the final failed attempt (the break before raise ensures this). The function has a clear signature, sensible defaults, and concrete usage examples. The exponential backoff and on_retry callback are reasonable additions that don't constitute unrequested bloat \u2014 they're opt-in with neutral defaults (backoff=1.0 means constant delay, on_retry=None means no callback). The decorator form is a convenient addition that directly addresses reusability. Minor concern: the 'on_retry' callback and decorator form go slightly beyond the minimal request, but they don't obscure the core behavior and are well-documented.",
+        "caveman": "The ACTUAL_OUTPUT fully satisfies all evaluation steps. It implements a bounded retry loop (controlled by `attempts`) and re-raises the last exception after exhausting attempts rather than swallowing it. All key assumptions and tradeoffs are explicitly surfaced as named parameters (`attempts`, `delay`, `backoff`, `exceptions`) with docstring explanations and notes warning about catching bare `Exception`. The delay is applied only between attempts (not after the final failure), confirmed by the `if n == attempts - 1: break` guard before `time.sleep`. The `backoff` parameter, while not explicitly requested, is acknowledged as a design choice in the notes rather than silently hard-coded. The interface is immediately usable with clear function signatures, a decorator form, and concrete usage examples matching the INPUT's request for a helper that retries with a delay.",
+        "karpathy": "The implementation satisfies all four evaluation steps. (1) It implements a bounded retry loop using `range(attempts)` and re-raises `last_exc` after exhausting all attempts rather than swallowing it. (2) It introduces a delay between attempts only when there are remaining retries (`if attempt < attempts - 1: time.sleep(delay)`), and key parameters\u2014`attempts`, `delay`, and `exceptions`\u2014are all surfaced as function arguments. (3) The solution is minimal and non-speculative; it doesn't add unrequested features, though it briefly mentions backoff as an optional note without implementing it, which is appropriate. The `exceptions` parameter is a reasonable inclusion given the input's phrasing. (4) The function signature is clear and immediately usable, and the usage example (`retry(lambda: do_request(url), attempts=5, delay=1.0)`) correctly demonstrates how to call the helper.",
+        "combo": "The implementation satisfies all four evaluation steps well. It implements a bounded retry loop (attempts parameter, default 3), re-raises the last exception after exhaustion without an additional delay (the sleep is conditional on `n < attempts - 1`). Key assumptions are surfaced explicitly: which exceptions to catch, delay strategy, and max attempts are all configurable parameters with clear defaults. The delay mechanism uses `time.sleep(delay)` between attempts and is correctly absent after the final attempt. The function signature is clean and directly usable, with a concrete usage example provided. No unnecessary or speculative additions are included."
+      }
+    }
+  ],
+  "num_cases": 3,
+  "arms": [
+    "base",
+    "caveman",
+    "karpathy",
+    "combo"
+  ],
+  "arm_means": {
+    "base": 0.9666666666666667,
+    "caveman": 0.8666666666666667,
+    "karpathy": 1.0,
+    "combo": 1.0
+  },
+  "n_arm_mode": true
+}

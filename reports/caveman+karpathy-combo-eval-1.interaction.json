@@ -1,0 +1,149 @@
+{
+  "skills": [
+    "caveman",
+    "karpathy"
+  ],
+  "design": "factorial-2",
+  "metric": "cost_units",
+  "lower_is_better": true,
+  "rel_tol": 0.1,
+  "per_task": [
+    {
+      "id": "all",
+      "arms": [
+        {
+          "subset": [],
+          "resolved": "transcript",
+          "cost_units": 13611.5,
+          "output_tokens": 2387.0,
+          "context_tokens": 6800.0,
+          "total_tokens": 9187.0,
+          "assistant_turns": 1.0
+        },
+        {
+          "subset": [
+            "caveman"
+          ],
+          "resolved": "transcript",
+          "cost_units": 10575.3,
+          "output_tokens": 1614.0,
+          "context_tokens": 7463.0,
+          "total_tokens": 9077.0,
+          "assistant_turns": 1.0
+        },
+        {
+          "subset": [
+            "karpathy"
+          ],
+          "resolved": "transcript",
+          "cost_units": 12218.0,
+          "output_tokens": 1918.0,
+          "context_tokens": 7575.0,
+          "total_tokens": 9493.0,
+          "assistant_turns": 1.0
+        },
+        {
+          "subset": [
+            "caveman",
+            "karpathy"
+          ],
+          "resolved": "transcript",
+          "cost_units": 9394.0,
+          "output_tokens": 1192.0,
+          "context_tokens": 8206.0,
+          "total_tokens": 9398.0,
+          "assistant_turns": 1.0
+        }
+      ],
+      "effects": {
+        "metric": "cost_units",
+        "lower_is_better": true,
+        "base": 13611.5,
+        "combo": 9394.0,
+        "combined_effect": -4217.5,
+        "combined_savings": 4217.5,
+        "individual_effects": {
+          "caveman": -3036.2,
+          "karpathy": -1393.5
+        },
+        "individual_savings": {
+          "caveman": 3036.2,
+          "karpathy": 1393.5
+        },
+        "marginal_effects": {
+          "caveman": -2824.0,
+          "karpathy": -1181.3
+        },
+        "pairwise_interaction": {
+          "caveman x karpathy": 212.2
+        },
+        "additive_prediction": 9181.8,
+        "interaction": 212.2,
+        "additive_savings": 4429.7,
+        "best_single_savings": 3036.2,
+        "classification": "additive - combined effect ~= the sum of the individual effects"
+      }
+    }
+  ],
+  "aggregate": {
+    "arms": {
+      "(baseline)": {
+        "cost_units": 13611.5,
+        "output_tokens": 2387.0,
+        "context_tokens": 6800.0,
+        "total_tokens": 9187.0,
+        "assistant_turns": 1.0
+      },
+      "caveman": {
+        "cost_units": 10575.3,
+        "output_tokens": 1614.0,
+        "context_tokens": 7463.0,
+        "total_tokens": 9077.0,
+        "assistant_turns": 1.0
+      },
+      "karpathy": {
+        "cost_units": 12218.0,
+        "output_tokens": 1918.0,
+        "context_tokens": 7575.0,
+        "total_tokens": 9493.0,
+        "assistant_turns": 1.0
+      },
+      "caveman+karpathy": {
+        "cost_units": 9394.0,
+        "output_tokens": 1192.0,
+        "context_tokens": 8206.0,
+        "total_tokens": 9398.0,
+        "assistant_turns": 1.0
+      }
+    },
+    "effects": {
+      "metric": "cost_units",
+      "lower_is_better": true,
+      "base": 13611.5,
+      "combo": 9394.0,
+      "combined_effect": -4217.5,
+      "combined_savings": 4217.5,
+      "individual_effects": {
+        "caveman": -3036.2,
+        "karpathy": -1393.5
+      },
+      "individual_savings": {
+        "caveman": 3036.2,
+        "karpathy": 1393.5
+      },
+      "marginal_effects": {
+        "caveman": -2824.0,
+        "karpathy": -1181.3
+      },
+      "pairwise_interaction": {
+        "caveman x karpathy": 212.2
+      },
+      "additive_prediction": 9181.8,
+      "interaction": 212.2,
+      "additive_savings": 4429.7,
+      "best_single_savings": 3036.2,
+      "classification": "additive - combined effect ~= the sum of the individual effects"
+    }
+  },
+  "notes": []
+}
