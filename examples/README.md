@@ -57,6 +57,50 @@ To exercise the most aggressive prose compression, ask for ultra:
 Evaluate the skill at ./examples/caveman with ultra mode
 ```
 
+## `karpathy-guidelines/` — a behavioral skill, and the combination partner
+
+[`karpathy-guidelines/SKILL.md`](karpathy-guidelines/SKILL.md) is a second
+self-contained example with a deliberately different profile from `caveman`.
+Where `caveman` is an **`output`-mechanism** skill (it changes *how much* is
+said), `karpathy-guidelines` is a **`none`-mechanism** skill — it makes **no
+token claim** and instead changes *what the model does*: surface assumptions
+before coding, prefer the simplest solution, make surgical edits, and define
+verifiable success criteria. It bills on nothing; its value is **behavioral
+quality**, which the evaluator scores with the blind judge rather than a token
+headline.
+
+It is bundled for two reasons:
+
+1. **Single-skill, a quality skill.** Pointed at on its own, it exercises the
+   mirror image of `caveman`: a skill expected to **cost** a little context for a
+   **quality** gain, instead of saving tokens. A good check that the harness
+   reports the quality axis honestly when there is no token story to tell.
+2. **The combination partner.** It is the intended counterpart for
+   `caveman` in a **combination (interaction)** run. The two pull in opposite
+   directions — `caveman` strips hedging and secondary detail; `karpathy-guidelines`
+   asks the model to *add* explicit assumptions and surfaced tradeoffs — so
+   stacking them is a natural test of **conflict**: does compression suppress the
+   very assumption-surfacing the guidelines exist to add?
+
+> **Attribution.** `karpathy-guidelines` is third-party software by `forrestchang`
+> (the *andrej-karpathy-skills* project), bundled here only as a sample to
+> evaluate. It is MIT-licensed (declared in the skill's own frontmatter; see
+> [`karpathy-guidelines/LICENSE`](karpathy-guidelines/LICENSE)); the canonical
+> source is <https://github.com/forrestchang/andrej-karpathy-skills>. The guidelines
+> are derived from Andrej Karpathy's public observations on LLM coding pitfalls.
+
+Single-skill:
+
+```
+Evaluate the skill at ./examples/karpathy-guidelines
+```
+
+Combined with `caveman` (the interaction run — a full 2×2 factorial):
+
+```
+Evaluate skills ./examples/caveman and ./examples/karpathy-guidelines combined
+```
+
 ## Trying it on your own skill
 
 Replace the path with any skill directory containing a `SKILL.md`:
