@@ -163,6 +163,14 @@ For **each** task, you will dispatch the `skill-eval-runner` subagent **twice**
 full body text inline; the WITHOUT arm does not. This makes the test
 reproducible and independent of whether the skill is installed.
 
+> **If `skill-eval-runner` / `skill-eval-judge` aren't registered as subagent
+> types** (e.g. running from the source repo, where they live in `agents/` rather
+> than an installed `.claude/agents/`), dispatch a generic subagent instead and
+> **embed that agent's rules verbatim** at the top of the prompt (the runner's hard
+> rules; the judge's blind-scoring rules + JSON schema). Behavior and blindness are
+> identical — the agent files are just instruction sets. Installing the skill (or
+> `claude --plugin-dir .`) registers them so you can call them by name.
+
 Before dispatching, for each (task, arm) mint a unique **run marker** of the
 form `SKILLEVAL-<taskId>-<A|B>-<short-random>` (vary the random suffix per run;
 e.g. derive it from the task id and arm). Keep a **private mapping** in your own
@@ -291,6 +299,18 @@ runs via their markers and compute:
   repay setup) and an **N-turn amortized** projection. The flat per-task total is
   a real number — but label it the harness artifact it is when setup is charged
   per task.
+
+**Watch for the `output_tokens` stub.** Claude Code's subagent logging
+intermittently records an arm's final-turn `output_tokens` as a tiny placeholder
+(`1`/`3`/`4`) even though that turn emitted a full deliverable — a
+non-deterministic, content-independent dropout that silently corrupts the
+output-token (and cost) figure of whichever arm it hits. `transcript_tokens.py`
+detects this and sets **`output_tokens_suspect: true`** on the run (plus a stderr
+warning). When you see it, **re-run that arm** with a *fresh* RUN MARKER and an
+*identical* prompt, then use the clean read — keeping arms comparable means
+re-running them all under one consistent prompt if their instructions would
+otherwise differ. Single-turn, zero-tool runners are least prone to it. **Never
+estimate the missing tokens.**
 
 If the helper cannot run (no Python, unusual transcript location), fall back to
 reading the JSONL directly per `docs/token-measurement.md`. If you genuinely
@@ -498,9 +518,24 @@ Phase 2 — these matter *more* here because more arms share the prefix.
 
 ### Phase 3 (combination) — interaction effects
 
+> **Build every downstream spec in one step with `combo_spec_builder.py`.** Rather
+> than hand-writing the interaction spec, the judge spec, and the deepeval cases
+> separately, give the builder one config — your **task list** plus the **arm →
+> RUN MARKER** map (it infers each arm's `subset` from its name) — and it reads the
+> transcript once and writes all of them:
+> `python agent_tools/combo_spec_builder.py CONFIG.json --out reports/<combo>-combo-eval-<n>`
+> produces `<…>.spec.json` (interaction), `<…>.judge.spec.json` (judging),
+> `<…>.deepeval.cases.json` (N-arm deepeval), and `<…>.deliverables.json` (verbatim
+> per-arm/per-task text for the records file). It also re-checks every arm for the
+> `output_tokens` stub and **exits non-zero with a warning if any arm needs
+> re-running** — do that before trusting the numbers. Config schema is in the
+> script's docstring; it expects each arm's multi-task output to delimit tasks with
+> `## TASK <id>` after `=== FINAL OUTPUT ===` (the runner format above).
+
 Pull each arm's tokens with `transcript_tokens.py --grep "<marker>" --cost` as
 usual. Then write a **spec file** (schema in the script's docstring) mapping every
-arm's `subset` + `marker`, and run the new helper:
+arm's `subset` + `marker` — or use the `<…>.spec.json` the builder just wrote — and
+run the helper:
 
 ```
 python agent_tools/interaction_effects.py reports/<combo>-combo-eval-<n>.spec.json \
@@ -529,6 +564,20 @@ stack, **per task**:
 
 Randomize Response 1/2 independently for each comparison; un-blind privately after.
 
+> **Mechanize this with `judge_planner.py`** — building these prompts and tracking
+> the private Response→arm map by hand is the most error-prone step. Write a spec
+> (tasks + each arm's deliverable, schema in the script's docstring) and run
+> `python agent_tools/judge_planner.py plan SPEC.json --out reports/<combo>-eval-<n>.judge`.
+> It emits `<…>.jobs.json` (one **ready-to-dispatch blind prompt** per comparison —
+> combo-vs-none, combo-vs-each-single, and the singles head-to-head, with Response
+> 1/2 positions randomized) and a **private** `<…>.map.json`. Dispatch each
+> `jobs[].prompt` to a fresh judge subagent, collect outputs as
+> `{job_id: <judge json>}`, then
+> `judge_planner.py resolve <…>.map.json results.json --out reports/<combo>-eval-<n>.judge`
+> un-blinds, **derives the best single skill from the head-to-heads**, and tallies
+> combo-vs-none and combo-vs-best-single — no two-stage bookkeeping, no leaked arm
+> identities. (Works for single-skill too: two arms → one with-vs-without job.)
+
 ### Phase 5 / 5b (combination) — combo report + records
 
 Write the report with [`templates/combo-report-template.md`](templates/combo-report-template.md)
@@ -543,8 +592,14 @@ arms below.
 
 ### Phase 6 (combination) — deepeval
 
-Required, as always. Score **every arm** (base / each single / combo) and fold the
-per-arm GEval table into the report's deepeval section.
+Required, as always. Score **every arm** (base / each single / combo) in **one**
+run: write a single cases file whose each case carries an **`arms` object**
+(`{"base": "...", "<skill-a>": "...", …, "combo": "..."}`) instead of the
+single-skill `with_skill_output`/`without_skill_output` pair — `deepeval_runner.py`
+then emits a per-arm GEval table (with a Δ-vs-baseline row when an arm is named
+`base`/`baseline`/`none`). Fold that table into the report's deepeval section. GEval
+saturates, so report it as weak corroboration of the blind judge, not a
+replacement.
 
 ---
 
@@ -594,6 +649,16 @@ Bundled inside this skill's own directory (they travel with it on install):
 - `agent_tools/interaction_effects.py` — **(combination mode)** multi-skill
   interaction effects (combined / individual / marginal / interaction +
   classification) from the transcript; stdlib-only, no deps.
+- `agent_tools/judge_planner.py` — plans the blind judging phase (`plan`: emits
+  ready-to-dispatch blind prompts + a private Response→arm map; `resolve`:
+  un-blinds, derives the best single skill, tallies combo-vs-none /
+  combo-vs-best-single). Stdlib-only; removes the manual prompt-building and
+  blinding bookkeeping in Phase 4.
+- `agent_tools/combo_spec_builder.py` — **(combination mode)** from one config
+  (task list + arm→marker map) reads the transcript once and writes all downstream
+  inputs: the interaction `spec.json`, the `judge.spec.json`, the N-arm
+  `deepeval.cases.json`, and the `deliverables.json` for the records file (warns +
+  exits non-zero on a stubbed arm). Stdlib-only.
 - `templates/report-template.md` — single-skill report skeleton.
 - `templates/combo-report-template.md` — **(combination mode)** multi-skill report
   skeleton (interaction decomposition + synergy verdict).

@@ -34,6 +34,16 @@ actual A/B outputs as they were recorded, not a summary::
 
     python transcript_tokens.py --grep "SKILLEVAL-t1-A-7f3" --json --full-text
 
+**Stub detection.** Claude Code's subagent logging intermittently records a
+turn's ``output_tokens`` as a tiny placeholder (``1``/``3``/``4``) even though
+that turn emitted a large text block — a non-deterministic, content-independent
+dropout that silently corrupts the output-token (and therefore cost) figure of
+whichever arm it hits. Each run is checked: a text-bearing assistant turn whose
+reported ``output_tokens`` is implausibly small for its character count sets
+``output_tokens_suspect: true`` on the run (and prints a warning to stderr). When
+you see it, **re-run that arm** with a fresh RUN MARKER and identical prompt and
+use the clean read — never estimate the missing tokens.
+
 Exit codes: 0 ok, 2 no transcript found, 3 marker not found.
 """
 
@@ -197,6 +207,15 @@ def cost_units(usage: dict) -> float:
     return sum(float(usage.get(k, 0) or 0) * w for k, w in COST_WEIGHTS.items())
 
 
+# Stub-detection thresholds (see _build_run). A real assistant turn emits roughly
+# 2-4 characters of text per output token; the logging stub reports 1/3/4 output
+# tokens for hundreds-to-thousands of characters. So flag any text-bearing turn
+# whose reported output_tokens is <= _STUB_OUTPUT_MAX while it emitted at least
+# _STUB_TEXT_MIN characters — that combination cannot be a real measurement.
+_STUB_OUTPUT_MAX = 4
+_STUB_TEXT_MIN = 200
+
+
 def _build_run(members: list[dict], include_text: bool = False, **extra) -> dict:
     """Summarize a list of entries belonging to ONE subagent run.
 
@@ -209,23 +228,30 @@ def _build_run(members: list[dict], include_text: bool = False, **extra) -> dict
     totals = defaultdict(int)
     assistant_turns = 0
     assistant_parts: list[str] = []
+    assistant_chars = 0
+    output_tokens_suspect = False
     for e in members:
         if _is_assistant(e):
             u = _usage_of(e)
             if u:
                 assistant_turns += 1
+            out_turn = int(u.get("output_tokens") or 0)
             totals["input_tokens"] += int(u.get("input_tokens") or 0)
-            totals["output_tokens"] += int(u.get("output_tokens") or 0)
+            totals["output_tokens"] += out_turn
             totals["cache_creation_input_tokens"] += int(
                 u.get("cache_creation_input_tokens") or 0
             )
             totals["cache_read_input_tokens"] += int(
                 u.get("cache_read_input_tokens") or 0
             )
-            if include_text:
-                text = _text_of(e)
-                if text:
-                    assistant_parts.append(text)
+            # Measure the turn's text even when not storing it, so the stub check
+            # (output_tokens implausibly small for the text emitted) always runs.
+            text = _text_of(e)
+            assistant_chars += len(text)
+            if u and out_turn <= _STUB_OUTPUT_MAX and len(text) >= _STUB_TEXT_MIN:
+                output_tokens_suspect = True
+            if include_text and text:
+                assistant_parts.append(text)
 
     first_user = next(
         (e for e in members if _is_user(e)), members[0] if members else None
@@ -246,6 +272,8 @@ def _build_run(members: list[dict], include_text: bool = False, **extra) -> dict
         "context_tokens": context_tokens,
         "total_tokens": context_tokens + totals["output_tokens"],
         "cost_units": round(cost_units(totals), 1),
+        "assistant_chars": assistant_chars,
+        "output_tokens_suspect": output_tokens_suspect,
         "first_user_text": first_text if include_text else first_text[:2000],
         "start_ts": members[0].get("timestamp") if members else None,
         "end_ts": members[-1].get("timestamp") if members else None,
@@ -350,6 +378,26 @@ def gather_runs(main_path: Path, include_text: bool = False) -> list[dict]:
 # --------------------------------------------------------------------------- #
 
 
+def warn_suspect_runs(runs: list[dict]) -> bool:
+    """Print an actionable stderr warning for any run with a stubbed output count.
+
+    Returns True if at least one run looked stubbed, so callers can branch.
+    """
+    bad = [r for r in runs if r.get("output_tokens_suspect")]
+    for r in bad:
+        snippet = " ".join((r.get("first_user_text") or "").split())[:70]
+        print(
+            f"warning: run [{snippet}] reports output_tokens="
+            f"{r.get('output_tokens')} for {r.get('assistant_chars', 0)} chars of "
+            "assistant text -- this is Claude Code's output_tokens logging stub, "
+            "NOT a real measurement. Its output_tokens/cost_units are unreliable; "
+            "re-run this arm with a fresh RUN MARKER (identical prompt) and use the "
+            "clean read. Do not estimate the missing tokens.",
+            file=sys.stderr,
+        )
+    return bool(bad)
+
+
 def print_human(session: Path, runs: list[dict], show_cost: bool = False) -> None:
     print(f"transcript: {session}")
     print(f"subagent runs found: {len(runs)}\n")
@@ -368,6 +416,11 @@ def print_human(session: Path, runs: list[dict], show_cost: bool = False) -> Non
             f"         in={r['input_tokens']} cache_create={r['cache_creation_input_tokens']} "
             f"cache_read={r['cache_read_input_tokens']}"
         )
+        if r.get("output_tokens_suspect"):
+            print(
+                f"         ⚠️  SUSPECT output_tokens={r['output_tokens']} for "
+                f"{r.get('assistant_chars', 0)} chars — likely logging stub; re-run this arm."
+            )
         if show_cost:
             print(
                 f"         cost~{r.get('cost_units') or cost_units(r):.0f} eff-input-tok "
@@ -422,6 +475,14 @@ def main(argv=None) -> int:
     )
     args = ap.parse_args(argv)
 
+    # Make stdout/stderr UTF-8 so the warning glyphs and any non-ASCII transcript
+    # text never die on a legacy console code page (e.g. cp932/cp1252 on Windows).
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8")
+        except (AttributeError, ValueError):
+            pass
+
     if args.list_sessions:
         proj_dir = find_project_dir(
             Path(args.project).expanduser() if args.project else None
@@ -460,12 +521,14 @@ def main(argv=None) -> int:
         else:
             for m in matches:
                 print_human(session, [m], show_cost=args.cost)
+        warn_suspect_runs(matches)
         return 0
 
     if args.json:
         print(json.dumps({"session": str(session), "runs": runs}, indent=2))
     else:
         print_human(session, runs, show_cost=args.cost)
+    warn_suspect_runs(runs)
     return 0
 
 
