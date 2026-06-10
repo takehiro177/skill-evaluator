@@ -18,6 +18,11 @@ reports/*
 !reports/caveman+karpathy-combo-eval-1.interaction.json
 !reports/caveman+karpathy-combo-eval-1.judge.verdicts.md
 !reports/caveman+karpathy-combo-eval-1.judge.verdicts.json
+# Dashboard data layer (summary.json) + built demo (regenerate, never hand-edit).
+!reports/caveman-eval-1.summary.json
+!reports/caveman+karpathy-combo-eval-1.summary.json
+!reports/index.json
+!reports/dashboard.html
 *.eval.json
 *.eval.md
 

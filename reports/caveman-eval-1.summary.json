@@ -1,0 +1,103 @@
+{
+  "schema_version": 1,
+  "id": "caveman-eval-1",
+  "kind": "single",
+  "skills": [
+    {"name": "caveman", "mode": "ultra", "mechanism": "output"}
+  ],
+  "design": "with-vs-without (single-injection, multi-task)",
+  "run": 1,
+  "date": "2026-06-06",
+  "tasks": 3,
+  "verdict": {
+    "label": "mixed-favorable",
+    "emoji": "⚠️",
+    "headline": "−59% output / −48% cost-weighted; quality 0W·0T·3L (mean −1.0/10) with zero technical errors — accuracy preserved",
+    "bottom_line": "Use ultra where terse, accurate answers are wanted; skip where reference-grade completeness matters. Guidance load repays in <1 turn (breakeven ≈ 0.35)."
+  },
+  "metrics": {
+    "mechanism": "output",
+    "primary_axis": "output_tokens",
+    "headline": {
+      "cost_delta_pct": -48.5,
+      "primary_delta_pct": -58.9,
+      "primary_label": "output tokens"
+    },
+    "arms": [
+      {
+        "name": "WITHOUT",
+        "skills": [],
+        "cost_units": 21799,
+        "output_tokens": 4060,
+        "cache_read_input_tokens": 5805
+      },
+      {
+        "name": "WITH",
+        "skills": ["caveman"],
+        "cost_units": 11235,
+        "output_tokens": 1668,
+        "input_tokens": 2,
+        "cache_creation_input_tokens": 1850,
+        "cache_read_input_tokens": 5805
+      }
+    ],
+    "setup": {
+      "one_time_cost_units": 1396,
+      "per_turn_saving_cost_units": 3987,
+      "breakeven_turns": 0.35
+    }
+  },
+  "quality": {
+    "pairwise": {
+      "comparison": "with_vs_without",
+      "wins": 0,
+      "ties": 0,
+      "losses": 3,
+      "mean_delta": -1.0
+    },
+    "deepeval": {
+      "available": true,
+      "arm_means": {"WITH": 1.0, "WITHOUT": 1.0},
+      "delta_vs_baseline": 0.0
+    }
+  },
+  "per_task": [
+    {
+      "id": "t1",
+      "title": "Database connection pooling",
+      "winner": "WITHOUT",
+      "margin": "slight",
+      "scores": {"WITH": 8, "WITHOUT": 9},
+      "deepeval": {"WITH": 1.0, "WITHOUT": 1.0}
+    },
+    {
+      "id": "t2",
+      "title": "Intermittent 401s after ~1 hour",
+      "winner": "WITHOUT",
+      "margin": "slight",
+      "scores": {"WITH": 9, "WITHOUT": 10},
+      "deepeval": {"WITH": 1.0, "WITHOUT": 1.0}
+    },
+    {
+      "id": "t3",
+      "title": "REST vs gRPC tradeoffs",
+      "winner": "WITHOUT",
+      "margin": "slight",
+      "scores": {"WITH": 9, "WITHOUT": 10},
+      "deepeval": {"WITH": 1.0, "WITHOUT": 1.0}
+    }
+  ],
+  "caveats": [
+    "small-n (3 tasks, 1 run)",
+    "per-task output figures apportioned from session totals",
+    "output_tokens stub on WITH arm reconstructed from transcript totals",
+    "measured −59% vs claimed −75%"
+  ],
+  "files": {
+    "report": "caveman-eval-1.md",
+    "records": "caveman-eval-1-records.md",
+    "deepeval_md": "caveman-eval-1.deepeval.md",
+    "deepeval_json": "caveman-eval-1.deepeval.json",
+    "deepeval_cases": "caveman-eval-1.deepeval.cases.json"
+  }
+}

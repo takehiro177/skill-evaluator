@@ -1,0 +1,873 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Skill Harness Dashboard · skill-evaluator</title>
+<style>
+/* ------------------------------------------------------------------ tokens
+   Plain, modern, flat. One accent, neutral surfaces, no ornament — the
+   verdict colors carry the meaning. Zero dependencies by design (opens from
+   file://), so the type is the system stack. */
+:root{
+  --bg:#f6f7f9;
+  --panel:#ffffff;
+  --code:#f8fafc;
+  --ink:#0f172a;
+  --muted:#5b6776;
+  --faint:#94a0ae;
+  --border:#e4e7ec;
+  --border-strong:#cfd5dd;
+  --accent:#4f46e5;
+  --accent-soft:#eef2ff;
+  --good:#0a7d52;
+  --warn:#9a5b00;
+  --bad:#c2362f;
+  --neutral:#5f6b7a;
+  --track:#edeff3;
+  --shadow:0 1px 2px rgba(15,23,42,.05);
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Cascadia Mono","Liberation Mono",monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+}
+[data-theme="dark"]{
+  --bg:#101216;
+  --panel:#17191f;
+  --code:#0d0f13;
+  --ink:#e7eaf0;
+  --muted:#9aa3b1;
+  --faint:#6b7686;
+  --border:#262a32;
+  --border-strong:#39404b;
+  --accent:#8b93f8;
+  --accent-soft:rgba(139,147,248,.14);
+  --good:#3fc48f;
+  --warn:#e0a93e;
+  --bad:#ef7a72;
+  --neutral:#94a0ae;
+  --track:#23262d;
+  --shadow:0 1px 2px rgba(0,0,0,.35);
+}
+/* ------------------------------------------------------------------- base */
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--sans);-webkit-font-smoothing:antialiased}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+.container{max-width:1180px;margin:0 auto;padding:0 22px}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.lbl{font:600 10.5px/1.3 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--faint)}
+.pos{color:var(--good)} .neg{color:var(--bad)} .dim{color:var(--muted)}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+
+/* ----------------------------------------------------------------- topbar */
+.topbar{position:sticky;top:0;z-index:20;background:var(--panel);border-bottom:1px solid var(--border)}
+.topbar-row{display:flex;align-items:center;gap:10px;padding:12px 0}
+.wordmark{font:650 14px/1.2 var(--sans)}
+.wordmark small{color:var(--muted);font-weight:500;margin-left:8px}
+.topbar .right{margin-left:auto;display:flex;align-items:center;gap:12px}
+#genMeta{font:11.5px var(--mono);color:var(--faint);font-variant-numeric:tabular-nums}
+.theme-btn{
+  width:32px;height:32px;border-radius:8px;border:1px solid var(--border);
+  display:inline-flex;align-items:center;justify-content:center;font-size:14px;color:var(--muted);
+}
+.theme-btn:hover{color:var(--ink);border-color:var(--border-strong)}
+
+/* ------------------------------------------------------------------- hero */
+.hero{padding:30px 0 4px}
+.hero h1{margin:0;font:700 23px/1.2 var(--sans);letter-spacing:-.015em}
+.hero p{margin:8px 0 0;color:var(--muted);font-size:13.5px;max-width:76ch}
+
+/* ------------------------------------------------------------------- KPIs */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:10px;padding:18px 0 4px}
+.kpi{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:13px 15px}
+.kpi .v{font:650 24px/1.15 var(--mono);font-variant-numeric:tabular-nums;margin-top:6px;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.kpi .v small{font:500 11.5px var(--sans);color:var(--faint)}
+.kpi .v .flagged{color:var(--warn)}
+.kpi.wide{grid-column:span 2}
+@media (max-width:620px){.kpi.wide{grid-column:span 1}}
+.spectrum{display:flex;height:8px;border-radius:999px;overflow:hidden;background:var(--track);margin-top:12px}
+.spectrum span{height:100%}
+.spectrum .sg{background:var(--good)} .spectrum .sn{background:var(--neutral)}
+.spectrum .sw{background:var(--warn)} .spectrum .sb{background:var(--bad)}
+.legend{display:flex;gap:4px 14px;flex-wrap:wrap;margin-top:8px;font:600 11px/1.4 var(--mono);font-variant-numeric:tabular-nums;color:var(--muted)}
+.legend i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px}
+.legend .lg i{background:var(--good)} .legend .ln i{background:var(--neutral)}
+.legend .lw i{background:var(--warn)} .legend .lb i{background:var(--bad)}
+
+/* ---------------------------------------------------------------- toolbar */
+.toolbar{display:flex;flex-wrap:wrap;gap:9px;align-items:center;padding:14px 0 2px}
+.search{
+  flex:1 1 230px;max-width:340px;background:var(--panel);border:1px solid var(--border);
+  border-radius:8px;padding:8px 12px;color:var(--ink);font:13.5px var(--sans);
+}
+.search::placeholder{color:var(--faint)}
+.seg{display:inline-flex;gap:2px;background:var(--track);border:1px solid var(--border);border-radius:9px;padding:2px}
+.seg button{border-radius:7px;padding:6px 13px;font:600 12.5px var(--sans);color:var(--muted)}
+.seg button:hover{color:var(--ink)}
+.seg button[aria-pressed="true"]{color:var(--ink);background:var(--panel);box-shadow:var(--shadow)}
+.chiprow{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.chip{
+  display:inline-flex;align-items:center;gap:7px;border:1px solid var(--border);border-radius:999px;
+  padding:6.5px 12px;background:var(--panel);font:600 12px/1 var(--sans);color:var(--muted);
+}
+.chip:hover{border-color:var(--border-strong);color:var(--ink)}
+.vdot{width:8px;height:8px;border-radius:50%;flex:none}
+.chip.fgood .vdot{background:var(--good)} .chip.fneutral .vdot{background:var(--neutral)}
+.chip.fwarn .vdot{background:var(--warn)} .chip.fbad .vdot{background:var(--bad)}
+.chip[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--ink)}
+.sortwrap{margin-left:auto;display:flex;align-items:center;gap:8px}
+select{background:var(--panel);border:1px solid var(--border);border-radius:8px;color:var(--ink);font:13px var(--sans);padding:7px 10px}
+.count-line{padding:6px 0 12px;color:var(--faint);font:12px var(--mono);font-variant-numeric:tabular-nums}
+
+/* ------------------------------------------------------------- list cards */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:12px;padding:2px 0 48px}
+@media (max-width:400px){.grid{grid-template-columns:1fr}}
+.card{
+  --vc:var(--neutral);
+  display:flex;flex-direction:column;gap:11px;color:var(--ink);
+  background:var(--panel);border:1px solid var(--border);border-left:3px solid var(--vc);
+  border-radius:10px;padding:15px 16px 12px;
+  transition:border-color .12s ease,background-color .12s ease;
+}
+.card:hover{text-decoration:none;border-color:var(--border-strong);border-left-color:var(--vc)}
+.card:hover .go{color:var(--accent)}
+.card.good{--vc:var(--good)} .card.warn{--vc:var(--warn)}
+.card.bad{--vc:var(--bad)} .card.neutral{--vc:var(--neutral)}
+.card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.card-top h2{margin:0;font:650 15.5px/1.35 var(--sans);letter-spacing:-.01em;min-width:0;overflow-wrap:anywhere}
+.card-top h2 .plus{color:var(--muted);font-weight:500}
+.badge{
+  display:inline-flex;align-items:center;gap:7px;flex:none;padding:4.5px 10px;border-radius:999px;
+  font:650 10px/1.2 var(--mono);letter-spacing:.09em;text-transform:uppercase;color:var(--vc);
+  background:color-mix(in srgb, var(--vc) 10%, transparent);
+  border:1px solid color-mix(in srgb, var(--vc) 32%, transparent);white-space:nowrap;
+}
+.badge .dot{width:6px;height:6px;border-radius:50%;background:var(--vc);flex:none}
+.stats{display:flex;gap:8px 22px;flex-wrap:wrap}
+.stat .sv{display:block;font:650 16px/1.2 var(--mono);font-variant-numeric:tabular-nums;margin-top:3px}
+.stat .sv.small{font-size:13px}
+.qline .w{color:var(--good)} .qline .l{color:var(--bad)} .qline .t{color:var(--muted)}
+.card-meta{
+  display:flex;flex-wrap:wrap;gap:3px 10px;align-items:center;border-top:1px solid var(--border);
+  padding-top:9px;margin-top:auto;font:11.5px var(--mono);color:var(--faint);font-variant-numeric:tabular-nums;
+}
+.card-meta .sep{opacity:.5}
+.card-meta .flag{color:var(--warn)}
+.card-meta .go{margin-left:auto;color:var(--faint);font:600 11.5px var(--sans)}
+
+/* ------------------------------------------------------------ detail view */
+.detail{padding:16px 0 64px}
+.back{display:inline-block;font:600 13px var(--sans);margin:6px 0 14px}
+.dhead{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap}
+.dhead h1{margin:0;font:700 21px/1.25 var(--sans);letter-spacing:-.015em}
+.dhead h1 .plus{color:var(--muted);font-weight:500}
+.tagrow{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.tag{font:600 10.5px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);
+  border:1px solid var(--border);border-radius:6px;padding:4.5px 7px;background:var(--panel)}
+.tag.kind{color:var(--accent);border-color:color-mix(in srgb, var(--accent) 40%, transparent);background:var(--accent-soft)}
+.dmeta{margin-top:10px;font:12px var(--mono);color:var(--faint);font-variant-numeric:tabular-nums}
+.dmeta .sep{opacity:.5;margin:0 6px}
+.dmeta .flag{color:var(--warn)}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:17px 19px;margin-top:14px}
+.panel h3{margin:0 0 13px;font:650 13px/1.3 var(--sans);letter-spacing:.01em}
+.panel h3 small{color:var(--faint);font:500 11.5px var(--sans);margin-left:8px}
+.panel.verdict{border-left:3px solid var(--vc)}
+.reco{font-size:13.5px;line-height:1.6}
+.reco + .reco{margin-top:11px}
+.reco .lbl{display:block;margin-bottom:4px}
+.statrow{display:flex;gap:10px 34px;flex-wrap:wrap}
+.statrow .sv{display:block;font:650 21px/1.2 var(--mono);font-variant-numeric:tabular-nums;margin-top:4px}
+.statrow .sub{font:11px var(--mono);color:var(--faint);margin-top:3px}
+.qline{font:650 14px/1.5 var(--mono);font-variant-numeric:tabular-nums}
+
+.bar-row{display:grid;grid-template-columns:110px 1fr 90px;gap:10px;align-items:center;margin-top:7px}
+.bar-name{font:600 10.5px/1.2 var(--mono);letter-spacing:.05em;color:var(--muted);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-transform:uppercase}
+.bar-track{height:9px;background:var(--track);border-radius:999px;overflow:hidden}
+.bar-fill{height:100%;border-radius:999px}
+.bar-fill.base{background:var(--border-strong)}
+.bar-fill.single{background:color-mix(in srgb, var(--accent) 55%, var(--border-strong))}
+.bar-fill.full{background:var(--accent)}
+.bar-val{font:600 11.5px/1 var(--mono);font-variant-numeric:tabular-nums;text-align:right}
+.setup-note{margin-top:12px;font:12.5px/1.5 var(--sans);color:var(--muted)}
+.interaction-line{font:13px/1.6 var(--sans);color:var(--muted)}
+.interaction-line b{color:var(--ink);font-weight:650}
+
+.dtable{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:6px}
+.dtable th{text-align:left;font:650 9.5px/1.2 var(--mono);letter-spacing:.1em;text-transform:uppercase;
+  color:var(--faint);border-bottom:1px solid var(--border-strong);padding:4px 8px 7px 0}
+.dtable td{border-bottom:1px solid var(--border);padding:7px 8px 7px 0;vertical-align:top}
+.dtable td.num,.dtable th.num{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+.win-base{color:var(--bad);font-weight:650}
+.win-arm{color:var(--good);font-weight:650}
+.win-tie{color:var(--muted)}
+
+.task{border-top:1px solid var(--border);padding-top:16px;margin-top:16px}
+.task:first-of-type{border-top:0;padding-top:2px;margin-top:2px}
+.task-head{font:650 14px/1.45 var(--sans)}
+.task-head .tid{font:650 12px var(--mono);color:var(--accent);margin-right:7px}
+.task-sub{margin-top:5px;font:12.5px/1.6 var(--sans);color:var(--muted)}
+.task-sub b{color:var(--ink);font-weight:650}
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:11px}
+@media (max-width:760px){.compare{grid-template-columns:1fr}}
+.colhead{margin-bottom:6px}
+.armpill{display:inline-block;font:650 10px/1.2 var(--mono);letter-spacing:.09em;text-transform:uppercase;
+  padding:4px 9px;border-radius:999px}
+.armpill.with{color:var(--accent);background:var(--accent-soft);border:1px solid color-mix(in srgb, var(--accent) 35%, transparent)}
+.armpill.base{color:var(--muted);background:var(--track);border:1px solid var(--border)}
+pre.out{
+  margin:0;background:var(--code);border:1px solid var(--border);border-radius:9px;
+  padding:11px 13px;font:12px/1.6 var(--mono);white-space:pre-wrap;word-break:break-word;
+  max-height:420px;overflow:auto;color:var(--ink);
+}
+pre.out.small{max-height:300px;font-size:11.5px}
+details.fold{margin-top:9px}
+details.fold>summary{cursor:pointer;font:600 12px var(--sans);color:var(--muted);list-style:none}
+details.fold>summary::-webkit-details-marker{display:none}
+details.fold>summary::before{content:"▸ ";color:var(--accent)}
+details.fold[open]>summary::before{content:"▾ "}
+details.fold>summary:hover{color:var(--ink)}
+details.fold>.fold-body{margin-top:8px}
+.fallback{margin:10px 0 0;font:12.5px/1.6 var(--sans);color:var(--muted)}
+.cavlist{margin:0;padding-left:18px;color:var(--muted);font-size:13px}
+.cavlist li{margin:4px 0}
+.files{display:flex;gap:6px 18px;flex-wrap:wrap;font:13px var(--sans)}
+
+/* --------------------------------------------------------- empty & footer */
+.empty{padding:54px 0 80px;display:flex;justify-content:center}
+.empty-box{max-width:560px;text-align:center;color:var(--muted);background:var(--panel);
+  border:1px solid var(--border);border-radius:12px;padding:36px 34px}
+.empty h2{font:650 18px/1.3 var(--sans);color:var(--ink);margin:0 0 8px}
+.empty p{margin:7px 0;font-size:13.5px}
+.empty code,.foot code{font-family:var(--mono);font-size:12px;background:var(--code);
+  border:1px solid var(--border);border-radius:6px;padding:2px 7px;color:var(--ink)}
+.foot{border-top:1px solid var(--border);margin-top:8px;padding:16px 0 40px;
+  color:var(--faint);font-size:12.5px;display:flex;flex-wrap:wrap;gap:6px 18px}
+.foot .right{margin-left:auto}
+
+@media print{
+  :root,[data-theme="dark"]{--bg:#fff;--panel:#fff;--code:#fafafa;--ink:#111;--muted:#444;--faint:#666;
+    --border:#ccc;--border-strong:#aaa;--track:#eee;--shadow:none;--accent:#333;--accent-soft:#f2f2f2}
+  .topbar,.toolbar,.count-line,.back,.foot .right{display:none}
+  .card,.panel{break-inside:avoid}
+  pre.out{max-height:none}
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-row container">
+    <span class="wordmark">skill-evaluator <small>Skill Harness Dashboard</small></span>
+    <span class="right">
+      <span id="genMeta"></span>
+      <button class="theme-btn" id="themeBtn" type="button" aria-label="Switch color theme">☾</button>
+    </span>
+  </div>
+</header>
+
+<div id="listView">
+  <section class="hero container">
+    <h1>Skill Harness Dashboard</h1>
+    <p>Every <a href="https://github.com/takehiro177/skill-evaluator">skill-evaluator</a> run as a report card — blind A/B, transcript-sourced, cost-weighted. Click a card for the full detail: judge verdicts, deepeval results, and the verbatim WITH/WITHOUT outputs.</p>
+  </section>
+
+  <section class="kpis container" id="kpis" hidden></section>
+
+  <section class="toolbar container" id="toolbar" hidden>
+    <input class="search" id="q" type="search" placeholder="Search skill or run id…" aria-label="Search runs">
+    <div class="seg" role="group" aria-label="Mode filter">
+      <button data-kind="all" aria-pressed="true" type="button">All</button>
+      <button data-kind="single" aria-pressed="false" type="button">Single</button>
+      <button data-kind="combination" aria-pressed="false" type="button">Combination</button>
+    </div>
+    <div class="chiprow" role="group" aria-label="Verdict filter">
+      <button class="chip fgood" data-bucket="good" aria-pressed="false" type="button"><span class="vdot"></span>Helps</button>
+      <button class="chip fneutral" data-bucket="neutral" aria-pressed="false" type="button"><span class="vdot"></span>Neutral</button>
+      <button class="chip fwarn" data-bucket="warn" aria-pressed="false" type="button"><span class="vdot"></span>Mixed</button>
+      <button class="chip fbad" data-bucket="bad" aria-pressed="false" type="button"><span class="vdot"></span>Risk</button>
+    </div>
+    <div class="sortwrap">
+      <label class="lbl" for="sort">sort</label>
+      <select id="sort">
+        <option value="date">Newest first</option>
+        <option value="savings">Biggest cost savings</option>
+        <option value="quality">Best quality delta</option>
+        <option value="name">Name A→Z</option>
+      </select>
+    </div>
+  </section>
+  <div class="container count-line" id="countLine" hidden></div>
+
+  <main class="grid container" id="grid"></main>
+
+  <div class="empty container" id="empty" hidden>
+    <div class="empty-box">
+      <h2>The data layer is empty</h2>
+      <p>Run an evaluation in Claude Code — <code>Evaluate the skill at ./examples/caveman</code> — and the workflow writes a <code>&lt;name&gt;-eval-&lt;n&gt;.summary.json</code> next to each report, then rebuilds this page.</p>
+      <p>To rebuild by hand: <code>python skills/skill-evaluator/agent_tools/build_dashboard.py</code></p>
+    </div>
+  </div>
+</div>
+
+<section class="detail container" id="detail" hidden></section>
+
+<footer class="foot container">
+  <span>skill-evaluator · Skill Harness Dashboard · MIT</span>
+  <span class="right">Regenerate: <code>python …/agent_tools/build_dashboard.py</code> — never edit this file by hand.</span>
+</footer>
+
+<script>
+window.__SKILL_EVAL_DATA__ = {"schema_version": 1, "generated_at": "2026-06-10 11:22 UTC", "generator": "skill-evaluator/build_dashboard.py", "count": 2, "runs": [{"schema_version": 1, "id": "caveman+karpathy-combo-eval-1", "kind": "combination", "skills": [{"name": "caveman", "mode": "ultra", "mechanism": "output"}, {"name": "karpathy", "mechanism": "behavioral"}], "design": "factorial-2", "run": 1, "date": "2026-06-07", "tasks": 3, "verdict": {"label": "additive", "emoji": "➖", "headline": "−31% cost-weighted (−50% output) vs none; interaction +212 cu (~2% of savings) → additive; quality flat vs near-ceiling baseline (combo vs none 0W/3L; vs best single 2W/1L)", "bottom_line": "Stack them — savings add cleanly with no conflict; expect token wins from caveman and leaner code from karpathy, not a quality lift on simple tasks. Biggest payoff on verbose, over-engineering-prone work."}, "metrics": {"mechanism": "output + behavioral", "primary_axis": "output_tokens", "headline": {"cost_delta_pct": -31.0, "primary_delta_pct": -50.1, "primary_label": "output tokens"}, "arms": [{"name": "base", "skills": [], "cost_units": 13611.5, "output_tokens": 2387, "context_tokens": 6800}, {"name": "caveman", "skills": ["caveman"], "cost_units": 10575.3, "output_tokens": 1614, "context_tokens": 7463}, {"name": "karpathy", "skills": ["karpathy"], "cost_units": 12218.0, "output_tokens": 1918, "context_tokens": 7575}, {"name": "combo", "skills": ["caveman", "karpathy"], "cost_units": 9394.0, "output_tokens": 1192, "context_tokens": 8206}]}, "interaction": {"available": true, "classification": "additive", "value": 212.2, "combined_savings": 4217.5, "additive_prediction": 9181.8, "individual_effects": {"caveman": -3036.2, "karpathy": -1393.5}, "marginal_effects": {"caveman": -2824.0, "karpathy": -1181.3}, "best_single": "caveman", "best_single_savings": 3036.2}, "quality": {"combo_vs_none": {"wins": 0, "ties": 0, "losses": 3}, "combo_vs_best_single": {"wins": 2, "ties": 0, "losses": 1, "best_single": "karpathy"}, "deepeval": {"available": true, "arm_means": {"base": 0.967, "caveman": 0.867, "karpathy": 1.0, "combo": 1.0}, "delta_vs_baseline": 0.033}}, "per_task": [{"id": "t1", "title": "Speed up a slow list-dedupe function", "winner": "base", "margin": "slight", "scores": {"combo": 9.0, "base": 9.0}, "best_single": "caveman", "combo_vs_best": {"result": "win", "margin": "slight"}, "deepeval": {"base": 1.0, "caveman": 1.0, "karpathy": 1.0, "combo": 1.0}}, {"id": "t2", "title": "Add input validation to register_user", "winner": "base", "margin": "clear", "scores": {"base": 9.0, "combo": 7.0}, "best_single": "karpathy", "combo_vs_best": {"result": "win", "margin": "slight"}, "deepeval": {"base": 1.0, "caveman": 0.6, "karpathy": 1.0, "combo": 1.0}}, {"id": "t3", "title": "Retry-with-delay helper", "winner": "base", "margin": "slight", "scores": {"combo": 9.25, "base": 9.5}, "best_single": "karpathy", "combo_vs_best": {"result": "loss", "margin": "slight"}, "deepeval": {"base": 0.9, "caveman": 1.0, "karpathy": 1.0, "combo": 1.0}}], "caveats": ["small-n (3 tasks, 1 run per arm)", "karpathy arm re-run under no-tools constraint (verification cost not priced)", "near-ceiling baseline tasks under-test quality value", "per-arm session totals (no per-task token split)"], "files": {"report": "caveman+karpathy-combo-eval-1.md", "records": "caveman+karpathy-combo-eval-1-records.md", "deepeval_md": "caveman+karpathy-combo-eval-1.deepeval.md", "deepeval_json": "caveman+karpathy-combo-eval-1.deepeval.json", "deepeval_cases": "caveman+karpathy-combo-eval-1.deepeval.cases.json", "interaction_md": "caveman+karpathy-combo-eval-1.interaction.md", "interaction_json": "caveman+karpathy-combo-eval-1.interaction.json", "judge_verdicts_md": "caveman+karpathy-combo-eval-1.judge.verdicts.md", "judge_verdicts_json": "caveman+karpathy-combo-eval-1.judge.verdicts.json"}, "_source": "caveman+karpathy-combo-eval-1.summary.json", "_detail": {"cases": [{"id": "t1", "input": "This Python function removes duplicate items from a list but is too slow on large inputs. Make it faster.\n\nINPUT:\ndef dedupe(items):\n    result = []\n    for item in items:\n        if item not in result:\n            result.append(item)\n    return result", "rubric": "1) Replaces the O(n^2) membership test with an O(n) approach (e.g. a set) so it scales. 2) Preserves first-occurrence order, or explicitly flags the tradeoff if changing it. 3) Notes the assumption that items must be hashable (or handles/flags unhashable input). 4) Stays minimal - no speculative parameters or unrelated rewrites. 5) Output is correct (same elements, deduplicated).", "arms": {"base": "The original code runs in O(n²) because `item not in result` scans the entire `result` list on every iteration. Tracking seen items in a `set` makes membership checks O(1) average, bringing the total to O(n) while preserving first-seen order.\n\n```python\ndef dedupe(items):\n    seen = set()\n    result = []\n    for item in items:\n        if item not in seen:\n            seen.add(item)\n            result.append(item)\n    return result\n```\n\nIf every item is guaranteed hashable and you don't mind the (small) difference in handling, Python 3.7+ also lets you do this in one line, since dicts preserve insertion order:\n\n```python\ndef dedupe(items):\n    return list(dict.fromkeys(items))\n```\n\nNote: both versions require items to be hashable. If the list can contain unhashable items (e.g. lists/dicts), the set-based approach won't work and you'd have to fall back to the original O(n²) scan — but for the common case of hashable elements, this is the right fix.", "caveman": "Slow because `item not in result` scans list = O(n) per check -> O(n²). Set lookup O(1). `dict.fromkeys` dedupes + keeps insertion order in one pass:\n\n```python\ndef dedupe(items):\n    return list(dict.fromkeys(items))\n```\n\nO(n) time. Order preserved. Needs hashable items.\n\nIf items unhashable (dicts, lists), fall back to seen-set on a key, or:\n\n```python\ndef dedupe(items):\n    seen = set()\n    result = []\n    for item in items:\n        if item not in seen:\n            seen.add(item)\n            result.append(item)\n    return result\n```\n\nSame O(n), works when you want explicit control. For unhashable items only, no fast option exists without a hashable key.", "karpathy": "The original is O(n²) because `item not in result` scans the whole list on every iteration. Use a `set` for O(1) membership checks, giving O(n) total while preserving first-seen order.\n\n```python\ndef dedupe(items):\n    seen = set()\n    result = []\n    for item in items:\n        if item not in seen:\n            seen.add(item)\n            result.append(item)\n    return result\n```\n\nNotes:\n- Assumes items are hashable (required for the set-based speedup; covers the common case).\n- Preserves insertion order, matching the original behavior.\n- If order doesn't matter, `list(set(items))` is even simpler — but it loses order, so I kept the order-preserving version to match the original.\n- If items may be unhashable (e.g., dicts), this approach won't work directly; that case wasn't indicated, so I didn't add a slower fallback for it.", "combo": "Slow because `item not in result` scans whole list each iteration -> O(n²). Add `set` for membership -> O(1) lookup, total O(n). Order preserved.\n\n```python\ndef dedupe(items):\n    seen = set()\n    result = []\n    for item in items:\n        if item not in seen:\n            seen.add(item)\n            result.append(item)\n    return result\n```\n\nNote: requires items hashable (true for set-based fix). Original allowed unhashable items (lists/dicts); if you need those, keep original or convert to tuples. Assumed hashable since \"large inputs + speed\" is the goal."}}, {"id": "t2", "input": "Add input validation to this user registration function so it rejects bad input before creating the user.\n\nINPUT:\ndef register_user(username, email, age):\n    user = {\"username\": username, \"email\": email, \"age\": age}\n    db.insert(user)\n    return user", "rubric": "1) Validates the obviously-bad cases (empty/missing username, malformed email, non-positive or non-integer age). 2) Rejects before the db.insert call (fails fast). 3) Surgical - does not refactor or restructure the unrelated insert/return logic. 4) Makes the validation rules explicit (clear what 'valid' means) rather than guessing silently. 5) Does not add speculative or unused configurability.", "arms": {"base": "Validation runs before `db.insert`, so bad input never reaches the database. Each check raises a `ValueError` (or `TypeError`) with a clear message describing the problem.\n\n```python\nimport re\n\nEMAIL_RE = re.compile(r\"^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$\")\n\ndef register_user(username, email, age):\n    # username: non-empty string, reasonable length, allowed characters\n    if not isinstance(username, str):\n        raise TypeError(\"username must be a string\")\n    username = username.strip()\n    if not username:\n        raise ValueError(\"username must not be empty\")\n    if not (3 <= len(username) <= 30):\n        raise ValueError(\"username must be between 3 and 30 characters\")\n    if not re.fullmatch(r\"[A-Za-z0-9_.-]+\", username):\n        raise ValueError(\n            \"username may only contain letters, digits, '_', '.', and '-'\"\n        )\n\n    # email: non-empty string matching a basic email shape\n    if not isinstance(email, str):\n        raise TypeError(\"email must be a string\")\n    email = email.strip()\n    if not email:\n        raise ValueError(\"email must not be empty\")\n    if not EMAIL_RE.match(email):\n        raise ValueError(\"email is not a valid email address\")\n\n    # age: integer in a sensible human range (bool is rejected explicitly,\n    # since bool is a subclass of int in Python)\n    if isinstance(age, bool) or not isinstance(age, int):\n        raise TypeError(\"age must be an integer\")\n    if not (0 < age < 150):\n        raise ValueError(\"age must be between 1 and 149\")\n\n    user = {\"username\": username, \"email\": email, \"age\": age}\n    db.insert(user)\n    return user\n```\n\nKey points:\n- Validates type and value of each field with specific, actionable messages.\n- Trims surrounding whitespace and stores the cleaned values.\n- Rejects `bool` for `age` (since `True`/`False` are technically `int` in Python).\n- Fails fast, so `db.insert` is reached only with valid data.\n- The email regex is intentionally simple; for production, prefer a vetted library (e.g. `email-validator`) since fully correct RFC 5322 validation is hard.", "caveman": "Validate types, presence, email shape, age range. Raise `ValueError` before `db.insert`.\n\n```python\nimport re\n\nEMAIL_RE = re.compile(r\"^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$\")\n\ndef register_user(username, email, age):\n    # username\n    if not isinstance(username, str) or not username.strip():\n        raise ValueError(\"username must be a non-empty string\")\n    username = username.strip()\n    if not (3 <= len(username) <= 32):\n        raise ValueError(\"username must be 3-32 characters\")\n\n    # email\n    if not isinstance(email, str) or not EMAIL_RE.match(email.strip()):\n        raise ValueError(\"email is invalid\")\n    email = email.strip().lower()\n\n    # age\n    if isinstance(age, bool) or not isinstance(age, int):\n        raise ValueError(\"age must be an integer\")\n    if not (13 <= age <= 120):\n        raise ValueError(\"age must be between 13 and 120\")\n\n    user = {\"username\": username, \"email\": email, \"age\": age}\n    db.insert(user)\n    return user\n```\n\nNotes:\n- `isinstance(age, bool)` check first — `bool` is subclass of `int`, else `True` passes as age.\n- Email regex is pragmatic, not RFC-complete. Full validation = send confirmation mail.\n- Age bounds 13/120 are policy guesses; adjust to your rules.\n- Strip + lowercase email to normalize before store/uniqueness checks.", "karpathy": "Validate each field and raise `ValueError` before touching the database. Rules are stated as explicit assumptions since none were specified.\n\n```python\nimport re\n\nEMAIL_RE = re.compile(r\"^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$\")\n\ndef register_user(username, email, age):\n    # username: non-empty string, reasonable length\n    if not isinstance(username, str) or not username.strip():\n        raise ValueError(\"username must be a non-empty string\")\n    if len(username) > 50:\n        raise ValueError(\"username must be at most 50 characters\")\n\n    # email: string matching a basic format\n    if not isinstance(email, str) or not EMAIL_RE.match(email):\n        raise ValueError(\"email must be a valid email address\")\n\n    # age: integer within a plausible range (reject bool, which is an int subclass)\n    if not isinstance(age, int) or isinstance(age, bool):\n        raise ValueError(\"age must be an integer\")\n    if not (0 < age < 150):\n        raise ValueError(\"age must be between 1 and 149\")\n\n    user = {\"username\": username, \"email\": email, \"age\": age}\n    db.insert(user)\n    return user\n```\n\nAssumptions (stated because the task didn't specify rules):\n- Username: non-empty after stripping, max 50 chars.\n- Email: simple structural check (`local@domain.tld`); not full RFC 5322 validation, which is rarely worth it.\n- Age: a real integer (explicitly rejecting `bool`, since `True`/`False` are `int` subclasses in Python) in a sane human range.\n- All validation runs before `db.insert`, so bad input never creates a user.\n\nDeliberately not added (not requested, depend on info I don't have): uniqueness checks against the DB, password handling, email normalization/lowercasing.", "combo": "Assumptions (stated, none given in task): username = non-empty string, max 50 chars; email = matches basic pattern; age = integer 0–150. Raise `ValueError` before any `db.insert` so bad input never creates a user.\n\n```python\nimport re\n\nEMAIL_RE = re.compile(r\"^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$\")\n\ndef register_user(username, email, age):\n    if not isinstance(username, str) or not username.strip():\n        raise ValueError(\"username must be a non-empty string\")\n    if len(username) > 50:\n        raise ValueError(\"username must be at most 50 characters\")\n\n    if not isinstance(email, str) or not EMAIL_RE.match(email):\n        raise ValueError(\"email is not valid\")\n\n    if not isinstance(age, int) or isinstance(age, bool):\n        raise ValueError(\"age must be an integer\")\n    if not 0 <= age <= 150:\n        raise ValueError(\"age must be between 0 and 150\")\n\n    user = {\"username\": username, \"email\": email, \"age\": age}\n    db.insert(user)\n    return user\n```\n\nNote: `isinstance(age, bool)` check excludes `True`/`False` (bool is subclass of int). Email regex is a pragmatic check, not full RFC 5322."}}, {"id": "t3", "input": "Write a Python helper that retries a function call when it raises an exception, with a short delay between attempts.", "rubric": "1) Retries up to a bounded number of attempts and re-raises (or returns) appropriately after the last failure. 2) Surfaces the key assumptions/tradeoffs (which exceptions to catch, fixed vs backoff delay, max attempts) rather than silently hard-coding them. 3) Minimal and non-speculative - no unrequested config explosion. 4) Actually delays between attempts and does not delay after the final failure. 5) Usable as shown (clear signature/example).", "arms": {"base": "A reusable retry helper. It retries on exception up to a fixed number of attempts, waits between tries, supports exponential backoff, and lets you restrict which exception types should trigger a retry. A decorator version is included for convenience.\n\n```python\nimport time\nimport functools\n\n\ndef retry(\n    func,\n    *args,\n    attempts=3,\n    delay=0.5,\n    backoff=1.0,\n    exceptions=(Exception,),\n    on_retry=None,\n    **kwargs,\n):\n    \"\"\"Call ``func(*args, **kwargs)``, retrying if it raises.\n\n    Parameters\n    ----------\n    func : callable\n        The function to call.\n    attempts : int\n        Maximum number of attempts (must be >= 1).\n    delay : float\n        Initial delay in seconds between attempts.\n    backoff : float\n        Multiplier applied to the delay after each failed attempt\n        (1.0 = constant delay, 2.0 = double each time).\n    exceptions : tuple[type[BaseException], ...]\n        Exception types that should trigger a retry. Anything else\n        propagates immediately.\n    on_retry : callable, optional\n        Called as ``on_retry(exc, attempt)`` after each failed attempt\n        that will be retried (useful for logging).\n\n    Returns\n    -------\n    The return value of ``func`` on the first successful call.\n\n    Raises\n    ------\n    The last exception raised by ``func`` if all attempts fail.\n    \"\"\"\n    if attempts < 1:\n        raise ValueError(\"attempts must be at least 1\")\n\n    current_delay = delay\n    last_exc = None\n    for attempt in range(1, attempts + 1):\n        try:\n            return func(*args, **kwargs)\n        except exceptions as exc:\n            last_exc = exc\n            if attempt == attempts:\n                break  # out of retries; re-raise below\n            if on_retry is not None:\n                on_retry(exc, attempt)\n            time.sleep(current_delay)\n            current_delay *= backoff\n    raise last_exc\n\n\ndef with_retry(attempts=3, delay=0.5, backoff=1.0, exceptions=(Exception,), on_retry=None):\n    \"\"\"Decorator form of :func:`retry`.\"\"\"\n    def decorator(func):\n        @functools.wraps(func)\n        def wrapper(*args, **kwargs):\n            return retry(\n                func, *args,\n                attempts=attempts, delay=delay, backoff=backoff,\n                exceptions=exceptions, on_retry=on_retry,\n                **kwargs,\n            )\n        return wrapper\n    return decorator\n```\n\nUsage examples:\n\n```python\n# Direct call\ndata = retry(fetch_url, \"https://example.com\", attempts=5, delay=1.0, backoff=2.0,\n             exceptions=(ConnectionError, TimeoutError))\n\n# As a decorator\n@with_retry(attempts=4, delay=0.2, exceptions=(IOError,))\ndef read_config(path):\n    ...\n```\n\nNotes:\n- Constant delay by default (`backoff=1.0`); set `backoff=2.0` for exponential backoff.\n- Only the exception types in `exceptions` trigger retries; everything else propagates immediately so you don't accidentally swallow programming errors.\n- Re-raises the last exception (preserving its traceback) once attempts are exhausted, rather than masking the failure.\n- `functools.wraps` keeps the decorated function's name and docstring intact.", "caveman": "Retry on exception, delay between attempts, cap attempts, re-raise last error. Usable as direct call or decorator.\n\n```python\nimport time\nimport functools\n\n\ndef retry(func, *args, attempts=3, delay=0.5, backoff=1.0,\n          exceptions=(Exception,), **kwargs):\n    \"\"\"Call func(*args, **kwargs), retry on exception.\n\n    attempts: max total tries (>=1)\n    delay: seconds before first retry\n    backoff: multiplier applied to delay each retry (1.0 = constant)\n    exceptions: tuple of exception types that trigger retry\n    \"\"\"\n    if attempts < 1:\n        raise ValueError(\"attempts must be >= 1\")\n    wait = delay\n    last_exc = None\n    for n in range(attempts):\n        try:\n            return func(*args, **kwargs)\n        except exceptions as exc:\n            last_exc = exc\n            if n == attempts - 1:\n                break\n            time.sleep(wait)\n            wait *= backoff\n    raise last_exc\n```\n\nDecorator form:\n\n```python\ndef retryable(attempts=3, delay=0.5, backoff=1.0, exceptions=(Exception,)):\n    def deco(func):\n        @functools.wraps(func)\n        def wrapper(*args, **kwargs):\n            return retry(func, *args, attempts=attempts, delay=delay,\n                         backoff=backoff, exceptions=exceptions, **kwargs)\n        return wrapper\n    return deco\n```\n\nUsage:\n\n```python\ndata = retry(fetch_url, \"http://x\", attempts=5, delay=1, backoff=2,\n             exceptions=(ConnectionError,))\n\n@retryable(attempts=4, delay=0.2, exceptions=(IOError,))\ndef read_thing(path):\n    ...\n```\n\nNotes:\n- Last attempt does not sleep — fails fast.\n- `backoff` gives exponential delay; default 1.0 = constant.\n- Narrow `exceptions` in real use — catching bare `Exception` hides bugs.\n- For production add jitter (`wait + random.uniform(0, wait)`) to avoid thundering herd.", "karpathy": "A minimal retry helper. It calls `func`, and on any exception retries up to `attempts` times with a fixed `delay`, re-raising the last exception if all attempts fail.\n\n```python\nimport time\n\ndef retry(func, attempts=3, delay=0.5, exceptions=(Exception,)):\n    \"\"\"Call func() and retry on failure.\n\n    attempts:   total number of tries (must be >= 1)\n    delay:      seconds to wait between attempts\n    exceptions: tuple of exception types that trigger a retry\n    \"\"\"\n    if attempts < 1:\n        raise ValueError(\"attempts must be at least 1\")\n    last_exc = None\n    for attempt in range(attempts):\n        try:\n            return func()\n        except exceptions as exc:\n            last_exc = exc\n            if attempt < attempts - 1:\n                time.sleep(delay)\n    raise last_exc\n```\n\nUsage:\n\n```python\nresult = retry(lambda: do_request(url), attempts=5, delay=1.0)\n```\n\nNotes:\n- Returns the result as soon as a call succeeds; re-raises the last exception after exhausting attempts.\n- `exceptions` lets callers narrow what counts as retryable (e.g., `exceptions=(ConnectionError,)`); it defaults to `Exception`. This is the one small piece of configurability I included because \"when it raises an exception\" implies the caller may care which ones — drop it if you always want to retry on everything.\n- No delay is added after the final failed attempt.\n- Backoff/jitter were not requested, so I kept a fixed delay. If needed, change the sleep to `delay * (2 ** attempt)` for exponential backoff.", "combo": "Retry helper. Catches exceptions, waits `delay` seconds between attempts, re-raises last error after attempts exhausted.\n\n```python\nimport time\n\ndef retry(func, *args, attempts=3, delay=1.0, exceptions=(Exception,), **kwargs):\n    \"\"\"Call func(*args, **kwargs), retry on exception.\n\n    attempts: total tries (>=1).\n    delay: seconds between tries.\n    exceptions: tuple of exception types to retry on.\n    Returns func result, or re-raises last exception after attempts exhausted.\n    \"\"\"\n    if attempts < 1:\n        raise ValueError(\"attempts must be >= 1\")\n    last_exc = None\n    for n in range(attempts):\n        try:\n            return func(*args, **kwargs)\n        except exceptions as exc:\n            last_exc = exc\n            if n < attempts - 1:\n                time.sleep(delay)\n    raise last_exc\n```\n\nUsage:\n\n```python\nresult = retry(fetch_url, \"https://example.com\", attempts=5, delay=0.5)\n```\n\nNote: only retries types in `exceptions` (default all). Last failure re-raised so caller sees real error."}}], "deepeval": {"results": [{"id": "t1", "scores": {"base": 1.0, "caveman": 1.0, "karpathy": 1.0, "combo": 1.0}, "reasons": {"base": "The Actual Output excels on all four evaluation steps. It explicitly identifies the O(n²) problem ('item not in result' scanning the list) and replaces it with a set-based O(1) membership check, clearly explaining the improvement. First-occurrence order is preserved in the primary solution via the seen/result pattern, and the dict.fromkeys alternative is noted as also preserving insertion order. The hashability requirement is explicitly addressed with a note about unhashable types (lists/dicts) and the fallback needed. The solution remains minimal and correct, producing the same deduplicated output without adding unrelated features or speculative parameters.", "caveman": "The Actual Output excels on all four evaluation steps. It clearly identifies the O(n²) problem (list membership scan) and replaces it with O(1) set-based lookup, satisfying step 1. It explicitly states 'Order preserved' and uses dict.fromkeys which maintains insertion order in Python 3.7+, satisfying step 2. It directly addresses hashability requirements with 'Needs hashable items' and provides a fallback for unhashable types, satisfying step 3. The solution is minimal and correct — it produces the same deduplicated result as the original without adding unrelated features or speculative parameters, satisfying step 4. The response is concise, accurate, and covers all relevant considerations.", "karpathy": "The Actual Output fully satisfies all four evaluation steps. It explicitly identifies the O(n²) problem and replaces the list membership test with a set-based O(1) check, achieving O(n) overall complexity. It preserves first-occurrence order and explicitly states this matches the original behavior. It clearly notes the hashability assumption required for the set-based approach and even mentions the unhashable case. The solution is minimal and correct, producing the same deduplicated output as the original without adding unrelated features or speculative parameters.", "combo": "The Actual Output fully satisfies all four evaluation steps. It replaces the O(n²) 'if item not in result' with an O(1) set-based lookup (step 1), explicitly states 'Order preserved' and maintains first-occurrence order in the implementation (step 2), directly addresses the hashability requirement with a note about unhashable types like lists/dicts and suggests a workaround (step 3), and the rewrite is minimal and correct — producing the same deduplicated output without adding unrelated features or speculative parameters (step 4)."}}, {"id": "t2", "scores": {"base": 1.0, "caveman": 0.6, "karpathy": 1.0, "combo": 1.0}, "reasons": {"base": "The actual output satisfies all four evaluation steps thoroughly. Step 1: All obviously-bad cases are explicitly caught — empty/missing username (after strip), malformed email (regex check), non-positive age (0 < age < 150 rejects zero and negatives), and non-integer age (isinstance check with bool exclusion). Step 2: All validation logic is placed before db.insert, ensuring fast failure. Step 3: The original insert/return logic is preserved exactly, with only validation code added above it. Step 4: Validation rules are explicit and clear — specific conditions for username (non-empty, length 3-30, allowed chars), email (non-empty, regex match), and age (integer, positive, < 150) — without introducing speculative or overly configurable options. The note about the email regex being intentionally simple is informational, not speculative code.", "caveman": "The ACTUAL_OUTPUT satisfies all three core validation requirements: empty/missing username is checked, malformed email is validated via regex, and non-positive/non-integer age is explicitly rejected. Validation is placed before db.insert, ensuring fail-fast behavior. The insert and return logic remain unchanged. However, the response introduces speculative constraints not implied by the INPUT: a 3-32 character username length limit, a 13-120 age range, bool subclass handling, and email normalization (strip + lowercase). These go beyond what was stated or implied, violating evaluation step 4. The age check also uses a range (13-120) rather than simply rejecting non-positive values, which is a policy guess explicitly acknowledged in the notes. Despite these additions, the core requirements are met and the structure is sound.", "karpathy": "The response excels on all four evaluation steps. It explicitly validates empty/missing username (non-empty string check), malformed email (regex pattern), and non-positive/non-integer age (isinstance check plus range 0 < age < 150). All validation runs before db.insert, satisfying the fail-fast requirement. The original insert/return logic is preserved exactly as-is. Validation rules are clearly stated with explicit assumptions, and no speculative or unused logic is introduced — the response even explicitly lists what was deliberately omitted. The bonus of rejecting bool subclasses shows careful Python-specific thinking without being over-engineered.", "combo": "The actual output satisfies all four evaluation steps thoroughly. It explicitly catches empty/missing username (step 1), malformed email via regex, non-positive/out-of-range age, and non-integer age including the bool edge case. All validation logic is placed before db.insert (step 2), ensuring fast failure. The insert and return logic from the original function are preserved exactly (step 3). Validation rules are clearly defined with explicit conditions and reasonable assumptions stated upfront, without introducing speculative or overly configurable options (step 4)."}}, {"id": "t3", "scores": {"base": 0.9, "caveman": 1.0, "karpathy": 1.0, "combo": 1.0}, "reasons": {"base": "The implementation satisfies all four evaluation criteria well. It implements a bounded retry loop (attempts parameter, default 3) and re-raises the last exception after exhaustion without swallowing errors. Key assumptions are made explicit: which exceptions are caught, delay duration, max attempts, and backoff multiplier — all with sensible defaults. The delay (time.sleep) occurs between attempts but NOT after the final failed attempt (the break before raise ensures this). The function has a clear signature, sensible defaults, and concrete usage examples. The exponential backoff and on_retry callback are reasonable additions that don't constitute unrequested bloat — they're opt-in with neutral defaults (backoff=1.0 means constant delay, on_retry=None means no callback). The decorator form is a convenient addition that directly addresses reusability. Minor concern: the 'on_retry' callback and decorator form go slightly beyond the minimal request, but they don't obscure the core behavior and are well-documented.", "caveman": "The ACTUAL_OUTPUT fully satisfies all evaluation steps. It implements a bounded retry loop (controlled by `attempts`) and re-raises the last exception after exhausting attempts rather than swallowing it. All key assumptions and tradeoffs are explicitly surfaced as named parameters (`attempts`, `delay`, `backoff`, `exceptions`) with docstring explanations and notes warning about catching bare `Exception`. The delay is applied only between attempts (not after the final failure), confirmed by the `if n == attempts - 1: break` guard before `time.sleep`. The `backoff` parameter, while not explicitly requested, is acknowledged as a design choice in the notes rather than silently hard-coded. The interface is immediately usable with clear function signatures, a decorator form, and concrete usage examples matching the INPUT's request for a helper that retries with a delay.", "karpathy": "The implementation satisfies all four evaluation steps. (1) It implements a bounded retry loop using `range(attempts)` and re-raises `last_exc` after exhausting all attempts rather than swallowing it. (2) It introduces a delay between attempts only when there are remaining retries (`if attempt < attempts - 1: time.sleep(delay)`), and key parameters—`attempts`, `delay`, and `exceptions`—are all surfaced as function arguments. (3) The solution is minimal and non-speculative; it doesn't add unrequested features, though it briefly mentions backoff as an optional note without implementing it, which is appropriate. The `exceptions` parameter is a reasonable inclusion given the input's phrasing. (4) The function signature is clear and immediately usable, and the usage example (`retry(lambda: do_request(url), attempts=5, delay=1.0)`) correctly demonstrates how to call the helper.", "combo": "The implementation satisfies all four evaluation steps well. It implements a bounded retry loop (attempts parameter, default 3), re-raises the last exception after exhaustion without an additional delay (the sleep is conditional on `n < attempts - 1`). Key assumptions are surfaced explicitly: which exceptions to catch, delay strategy, and max attempts are all configurable parameters with clear defaults. The delay mechanism uses `time.sleep(delay)` between attempts and is correctly absent after the final attempt. The function signature is clean and directly usable, with a concrete usage example provided. No unnecessary or speculative additions are included."}}], "num_cases": 3, "arms": ["base", "caveman", "karpathy", "combo"], "arm_means": {"base": 0.9666666666666667, "caveman": 0.8666666666666667, "karpathy": 1.0, "combo": 1.0}, "n_arm_mode": true}, "interaction": {"skills": ["caveman", "karpathy"], "design": "factorial-2", "metric": "cost_units", "lower_is_better": true, "rel_tol": 0.1, "per_task": [{"id": "all", "arms": [{"subset": [], "resolved": "transcript", "cost_units": 13611.5, "output_tokens": 2387.0, "context_tokens": 6800.0, "total_tokens": 9187.0, "assistant_turns": 1.0}, {"subset": ["caveman"], "resolved": "transcript", "cost_units": 10575.3, "output_tokens": 1614.0, "context_tokens": 7463.0, "total_tokens": 9077.0, "assistant_turns": 1.0}, {"subset": ["karpathy"], "resolved": "transcript", "cost_units": 12218.0, "output_tokens": 1918.0, "context_tokens": 7575.0, "total_tokens": 9493.0, "assistant_turns": 1.0}, {"subset": ["caveman", "karpathy"], "resolved": "transcript", "cost_units": 9394.0, "output_tokens": 1192.0, "context_tokens": 8206.0, "total_tokens": 9398.0, "assistant_turns": 1.0}], "effects": {"metric": "cost_units", "lower_is_better": true, "base": 13611.5, "combo": 9394.0, "combined_effect": -4217.5, "combined_savings": 4217.5, "individual_effects": {"caveman": -3036.2, "karpathy": -1393.5}, "individual_savings": {"caveman": 3036.2, "karpathy": 1393.5}, "marginal_effects": {"caveman": -2824.0, "karpathy": -1181.3}, "pairwise_interaction": {"caveman x karpathy": 212.2}, "additive_prediction": 9181.8, "interaction": 212.2, "additive_savings": 4429.7, "best_single_savings": 3036.2, "classification": "additive - combined effect ~= the sum of the individual effects"}}], "aggregate": {"arms": {"(baseline)": {"cost_units": 13611.5, "output_tokens": 2387.0, "context_tokens": 6800.0, "total_tokens": 9187.0, "assistant_turns": 1.0}, "caveman": {"cost_units": 10575.3, "output_tokens": 1614.0, "context_tokens": 7463.0, "total_tokens": 9077.0, "assistant_turns": 1.0}, "karpathy": {"cost_units": 12218.0, "output_tokens": 1918.0, "context_tokens": 7575.0, "total_tokens": 9493.0, "assistant_turns": 1.0}, "caveman+karpathy": {"cost_units": 9394.0, "output_tokens": 1192.0, "context_tokens": 8206.0, "total_tokens": 9398.0, "assistant_turns": 1.0}}, "effects": {"metric": "cost_units", "lower_is_better": true, "base": 13611.5, "combo": 9394.0, "combined_effect": -4217.5, "combined_savings": 4217.5, "individual_effects": {"caveman": -3036.2, "karpathy": -1393.5}, "individual_savings": {"caveman": 3036.2, "karpathy": 1393.5}, "marginal_effects": {"caveman": -2824.0, "karpathy": -1181.3}, "pairwise_interaction": {"caveman x karpathy": 212.2}, "additive_prediction": 9181.8, "interaction": 212.2, "additive_savings": 4429.7, "best_single_savings": 3036.2, "classification": "additive - combined effect ~= the sum of the individual effects"}}, "notes": []}, "judge": {"meta": {"skills": ["caveman", "karpathy"], "design": "factorial-2"}, "verdicts": [{"job_id": "t1__combo_vs_none", "task": "t1", "label": "combo_vs_none", "arm_response_1": "combo", "arm_response_2": "base", "winner_arm": "base", "margin": "slight", "scores": {"combo": 9.0, "base": 9.0}, "rationale": "Both nail every criterion; Response 2 edges ahead by also offering the canonical list(dict.fromkeys(items)) one-liner. Slight margin."}, {"job_id": "t1__combo_vs_caveman", "task": "t1", "label": "combo_vs_caveman", "arm_response_1": "combo", "arm_response_2": "caveman", "winner_arm": "combo", "margin": "slight", "scores": {"combo": 9.0, "caveman": 9.0}, "rationale": "Both fully correct; Response 2's extra second implementation pushes slightly against minimalism. Response 1 wins slight."}, {"job_id": "t1__combo_vs_karpathy", "task": "t1", "label": "combo_vs_karpathy", "arm_response_1": "karpathy", "arm_response_2": "combo", "winner_arm": "tie", "margin": "slight", "scores": {"karpathy": 9.0, "combo": 9.0}, "rationale": "Identical correct solutions satisfying all criteria; differences purely stylistic. Effectively tied."}, {"job_id": "t1__single_caveman_vs_karpathy", "task": "t1", "label": "single_caveman_vs_karpathy", "arm_response_1": "caveman", "arm_response_2": "karpathy", "winner_arm": "caveman", "margin": "slight", "scores": {"caveman": 9.0, "karpathy": 9.0}, "rationale": "Both satisfy every criterion; Response 1 supplies a working fallback while Response 2 only mentions it. Slight edge."}, {"job_id": "t2__combo_vs_none", "task": "t2", "label": "combo_vs_none", "arm_response_1": "base", "arm_response_2": "combo", "winner_arm": "base", "margin": "clear", "scores": {"base": 9.0, "combo": 7.0}, "rationale": "Response 2 accepts age==0 (range 0-150), violating the rubric's reject-non-positive-age; Response 1 enforces 0<age<150 and states rules more explicitly. Clear win."}, {"job_id": "t2__combo_vs_caveman", "task": "t2", "label": "combo_vs_caveman", "arm_response_1": "combo", "arm_response_2": "caveman", "winner_arm": "combo", "margin": "slight", "scores": {"combo": 9.0, "caveman": 8.0}, "rationale": "Response 1 is more faithfully surgical (no input mutation, neutral bounds); Response 2 adds normalization and stricter policy bounds. Slight edge to Response 1."}, {"job_id": "t2__combo_vs_karpathy", "task": "t2", "label": "combo_vs_karpathy", "arm_response_1": "combo", "arm_response_2": "karpathy", "winner_arm": "combo", "margin": "slight", "scores": {"combo": 9.0, "karpathy": 8.0}, "rationale": "Both satisfy criteria; Response 1's inclusive age range more defensible and less padding. Slight edge."}, {"job_id": "t2__single_caveman_vs_karpathy", "task": "t2", "label": "single_caveman_vs_karpathy", "arm_response_1": "karpathy", "arm_response_2": "caveman", "winner_arm": "karpathy", "margin": "slight", "scores": {"karpathy": 9.0, "caveman": 8.0}, "rationale": "Response 1 keeps insert/return surgical and avoids speculative scope; Response 2 normalizes/mutates stored values. Slight edge to Response 1."}, {"job_id": "t3__combo_vs_none", "task": "t3", "label": "combo_vs_none", "arm_response_1": "combo", "arm_response_2": "base", "winner_arm": "base", "margin": "slight", "scores": {"combo": 9.25, "base": 9.5}, "rationale": "Both correct and satisfy core rubric; Response 2 more explicitly addresses fixed-vs-backoff tradeoff and cleaner demo, but adds scope. Slight edge to Response 2."}, {"job_id": "t3__combo_vs_caveman", "task": "t3", "label": "combo_vs_caveman", "arm_response_1": "combo", "arm_response_2": "caveman", "winner_arm": "combo", "margin": "slight", "scores": {"combo": 9.0, "caveman": 8.0}, "rationale": "Both correct; Response 1 tighter to task while documenting assumptions; Response 2 adds mild unrequested scope. Slight edge Response 1."}, {"job_id": "t3__combo_vs_karpathy", "task": "t3", "label": "combo_vs_karpathy", "arm_response_1": "combo", "arm_response_2": "karpathy", "winner_arm": "karpathy", "margin": "slight", "scores": {"combo": 9.0, "karpathy": 9.0}, "rationale": "Functionally equivalent; Response 2 has superior transparency on exceptions param, no-post-final-delay, and how to switch to backoff. Slight edge."}, {"job_id": "t3__single_caveman_vs_karpathy", "task": "t3", "label": "single_caveman_vs_karpathy", "arm_response_1": "caveman", "arm_response_2": "karpathy", "winner_arm": "karpathy", "margin": "slight", "scores": {"caveman": 9.25, "karpathy": 9.5}, "rationale": "Both correct and avoid delay after final failure; Response 2 better honors minimalism with one justified knob, Response 1 ships backoff+decorator. Slight edge Response 2."}], "decisions": [{"task": "t1", "combo_vs_none": {"winner_arm": "base", "margin": "slight", "result": "loss"}, "combo_arm": "combo", "best_single": "caveman", "combo_vs_best_single": {"best_single": "caveman", "winner_arm": "combo", "margin": "slight", "result": "win"}}, {"task": "t2", "combo_vs_none": {"winner_arm": "base", "margin": "clear", "result": "loss"}, "combo_arm": "combo", "best_single": "karpathy", "combo_vs_best_single": {"best_single": "karpathy", "winner_arm": "combo", "margin": "slight", "result": "win"}}, {"task": "t3", "combo_vs_none": {"winner_arm": "base", "margin": "slight", "result": "loss"}, "combo_arm": "combo", "best_single": "karpathy", "combo_vs_best_single": {"best_single": "karpathy", "winner_arm": "karpathy", "margin": "slight", "result": "loss"}}], "tally": {"combo_vs_none": {"win": 0, "loss": 3, "tie": 0}, "combo_vs_best_single": {"win": 2, "loss": 1, "tie": 0}}, "missing_results": []}}}, {"schema_version": 1, "id": "caveman-eval-1", "kind": "single", "skills": [{"name": "caveman", "mode": "ultra", "mechanism": "output"}], "design": "with-vs-without (single-injection, multi-task)", "run": 1, "date": "2026-06-06", "tasks": 3, "verdict": {"label": "mixed-favorable", "emoji": "⚠️", "headline": "−59% output / −48% cost-weighted; quality 0W·0T·3L (mean −1.0/10) with zero technical errors — accuracy preserved", "bottom_line": "Use ultra where terse, accurate answers are wanted; skip where reference-grade completeness matters. Guidance load repays in <1 turn (breakeven ≈ 0.35)."}, "metrics": {"mechanism": "output", "primary_axis": "output_tokens", "headline": {"cost_delta_pct": -48.5, "primary_delta_pct": -58.9, "primary_label": "output tokens"}, "arms": [{"name": "WITHOUT", "skills": [], "cost_units": 21799, "output_tokens": 4060, "cache_read_input_tokens": 5805}, {"name": "WITH", "skills": ["caveman"], "cost_units": 11235, "output_tokens": 1668, "input_tokens": 2, "cache_creation_input_tokens": 1850, "cache_read_input_tokens": 5805}], "setup": {"one_time_cost_units": 1396, "per_turn_saving_cost_units": 3987, "breakeven_turns": 0.35}}, "quality": {"pairwise": {"comparison": "with_vs_without", "wins": 0, "ties": 0, "losses": 3, "mean_delta": -1.0}, "deepeval": {"available": true, "arm_means": {"WITH": 1.0, "WITHOUT": 1.0}, "delta_vs_baseline": 0.0}}, "per_task": [{"id": "t1", "title": "Database connection pooling", "winner": "WITHOUT", "margin": "slight", "scores": {"WITH": 8, "WITHOUT": 9}, "deepeval": {"WITH": 1.0, "WITHOUT": 1.0}}, {"id": "t2", "title": "Intermittent 401s after ~1 hour", "winner": "WITHOUT", "margin": "slight", "scores": {"WITH": 9, "WITHOUT": 10}, "deepeval": {"WITH": 1.0, "WITHOUT": 1.0}}, {"id": "t3", "title": "REST vs gRPC tradeoffs", "winner": "WITHOUT", "margin": "slight", "scores": {"WITH": 9, "WITHOUT": 10}, "deepeval": {"WITH": 1.0, "WITHOUT": 1.0}}], "caveats": ["small-n (3 tasks, 1 run)", "per-task output figures apportioned from session totals", "output_tokens stub on WITH arm reconstructed from transcript totals", "measured −59% vs claimed −75%"], "files": {"report": "caveman-eval-1.md", "records": "caveman-eval-1-records.md", "deepeval_md": "caveman-eval-1.deepeval.md", "deepeval_json": "caveman-eval-1.deepeval.json", "deepeval_cases": "caveman-eval-1.deepeval.cases.json"}, "_source": "caveman-eval-1.summary.json", "_detail": {"cases": [{"id": "t1", "input": "Explain how database connection pooling works and when it helps.", "rubric": "Explains pooling as reuse of already-established connections instead of opening/closing one per request; identifies the handshake/TLS/auth/session setup overhead avoided; describes the pool lifecycle (acquire/use/return, max size, wait or timeout when none free); names key config knobs (max/min size, idle timeout, max lifetime, acquire timeout); states when it helps and a real caveat (serverless multiplication & DB connection limits, connection leaks); technically accurate throughout.", "with_skill_output": "## t1\n\n**Pool = reuse open DB connections. Skip handshake per req → fast.**\n\nMechanics:\n- New DB connection costs TCP handshake + TLS + auth + session setup. Slow (ms-tens of ms).\n- Pool keep N open connections ready. App borrow → use → return (not close).\n- Idle conns wait in pool for next req.\n\nKey knobs:\n- `max` size: cap concurrent conns. Too high → DB overload (each conn = memory + backend process). Too low → reqs queue/block.\n- `min`/idle: warm conns kept ready.\n- idle timeout: close conns unused too long.\n- max lifetime: recycle old conns (avoid stale/leaked state, load-balancer drift).\n- acquire timeout: fail fast if none free.\n\nHelps when:\n- Many short reqs (web/API). Per-req connect overhead dominates → big win.\n- High concurrency. Bound total DB conns, protect DB from connection storm.\n- High-latency or TLS handshake to DB.\n\nLess help / careful:\n- Long-lived batch jobs (one conn, held long). Pool adds little.\n- Serverless/many instances: pools multiply across instances → DB conn limit blown. Use external pooler (PgBouncer) or proxy.\n\nWatch: conn leak (borrow, never return) → pool exhausts → reqs hang. Always return/close in `finally`.", "without_skill_output": "## t1\n\n**How database connection pooling works**\n\nOpening a database connection is expensive. It involves a TCP handshake, TLS negotiation, authentication, and session setup on the server side — often tens of milliseconds, which dwarfs the time of a typical query. A connection pool amortizes that cost by keeping a set of already-established connections open and reusing them across requests.\n\nThe mechanics:\n\n1. **Initialization** — At startup (or lazily on first demand), the pool opens a configurable number of connections to the database and holds them in an idle set.\n2. **Acquire** — When application code needs to run a query, it *borrows* a connection from the pool instead of opening a new one. If an idle connection is available, it's handed over immediately.\n3. **Use** — The code runs its queries/transaction on the borrowed connection.\n4. **Release** — When done, the connection is *returned* to the pool (not closed) and becomes available for the next borrower. The pool typically resets session state (rolls back open transactions, resets variables) before reuse.\n5. **Wait / grow / reject** — If all connections are checked out, a requester either waits up to a timeout, the pool grows toward a maximum size, or the request fails fast — depending on configuration.\n6. **Maintenance** — The pool prunes connections idle beyond an idle timeout, recycles connections older than a max-lifetime, and validates connections (a lightweight ping or test query) so dead/stale ones aren't handed out.\n\n**Key configuration knobs**\n\n- **Min / max pool size** — floor of idle connections and ceiling of total connections. The max is the most important: each connection consumes memory and a worker slot on the database server, so the sum of max sizes across all app instances must stay under the database's connection limit.\n- **Acquire/connection timeout** — how long a caller waits for a free connection before erroring.\n- **Idle timeout** — how long an unused connection lingers before being closed.\n- **Max lifetime / max age** — recycle connections periodically to avoid accumulating server-side state and to cope with load balancers or firewalls that silently drop long-lived TCP sessions.\n- **Validation / test-on-borrow** — verify liveness before handing a connection out.\n\n**When pooling helps**\n\n- **High request volume with short-lived queries** — the per-request cost is dominated by connection setup, so reuse is a big win. This is the classic web-app case.\n- **Connection setup is heavy** — e.g., TLS plus authentication against a remote database.\n- **You need to bound concurrency against the database** — the pool max acts as a throttle, protecting the database from being overwhelmed by a thundering herd and from hitting its hard connection limit.\n- **Many stateless application workers** — pooling per process keeps total connections predictable.\n\n**When it helps less or needs care**\n\n- **Serverless / many ephemeral instances** — each instance has its own pool, so total connections explode. Use a small per-instance max or an external pooler (e.g., PgBouncer, RDS Proxy, ProxySQL) that multiplexes many app connections onto few database connections.\n- **Long-running transactions or session-specific state** — connections held for a long time defeat reuse; session-level settings (temp tables, prepared statements, `SET` variables) can leak between borrowers if the pool doesn't reset them — relevant to \"transaction\" vs \"session\" pooling modes.\n- **Very low traffic** — the overhead of maintaining idle connections may exceed the benefit.\n\nIn short: a pool trades a fixed, bounded set of live connections for the elimination of per-request connection setup, while also serving as a concurrency limiter that protects the database."}, {"id": "t2", "input": "I am getting intermittent 401 errors from my API after about an hour. Walk me through the likely cause and how to fix it.", "rubric": "Identifies token/credential expiry (~1h, e.g. 3600s access token) as the most likely cause; explains the works-then-fails-after-an-hour pattern; gives a concrete diagnosis step (decode exp, read the 401 body or WWW-Authenticate header, correlate timing); gives the correct fix (proactively refresh before expiry via refresh-token grant or re-fetch, plus retry-once-on-401 centralized in the client); notes adjacent causes (session timeout, clock skew, rotating signing keys/JWKS); does not merely enlarge the TTL; technically accurate.", "with_skill_output": "## t2\n\n**401 after ~1hr = token expiry. Access token TTL ~3600s. Expires → 401. No refresh → stay 401.**\n\nWhy intermittent: works right after auth, fails once token past expiry. \"About an hour\" = classic 3600s TTL tell.\n\nDiagnose:\n1. Decode token (jwt.io or decode `exp` claim). Check `exp - iat`. ~3600 confirms.\n2. Compare failing req timestamp vs token `exp`.\n3. Read 401 body / `WWW-Authenticate` header — often says `token expired` / `invalid_token`.\n4. Check clock skew (server vs token issuer). Skew → early expiry.\n\nFixes (pick by setup):\n- **OAuth2/OIDC:** use refresh token. On 401, request new access token via refresh grant, retry req. Refresh proactively before `exp` (e.g. at 80% TTL).\n- **Client lib:** enable auto-refresh / token manager (many SDKs do this if given refresh token + token endpoint).\n- **Long-lived job:** don't cache token for whole run. Re-fetch when near expiry.\n- **Service-to-service:** re-request client_credentials token before expiry; cache with margin.\n\nPattern (interceptor):\n```\non response 401:\n  if not already retried:\n    newToken = refresh()\n    retry original request with newToken\n```\n\nAvoid: hardcoding/caching token at startup forever. Fix clock skew with NTP. Don't bump TTL huge as workaround — security risk; refresh is right answer.", "without_skill_output": "## t2\n\n**The symptom**\n\n401 (Unauthorized) appearing only after roughly an hour of successful operation is a near-textbook signature of an **expired access token / credential that isn't being refreshed**. The \"works, then fails after a fixed interval\" pattern points at a time-based expiry rather than a code-path or permissions bug (those would fail immediately or randomly).\n\n**Most likely cause: token expiry without refresh**\n\nMany auth systems (OAuth 2.0 / OIDC, JWT-based APIs, cloud IAM tokens) issue short-lived access tokens — 3600 seconds (one hour) is an extremely common default. What's almost certainly happening:\n\n- Your client fetches a token once at startup and caches it.\n- The token's `exp` passes the one-hour mark.\n- Subsequent calls present a stale token, and the API returns 401.\n\n**How to confirm**\n\n1. **Decode the token.** If it's a JWT, base64-decode the middle segment and look at `exp` and `iat`. Compute `exp - iat` — if it's 3600 (or whatever matches your \"about an hour\"), that's your answer. Check `exp` against the wall-clock time at which 401s begin.\n2. **Inspect the response.** Look at the `WWW-Authenticate` header — it often says `error=\"invalid_token\", error_description=\"token expired\"` or similar. The response body frequently names the exact reason.\n3. **Correlate timing.** Note the timestamp of the first 401 and compare it to when the token was issued. A consistent ~60-minute gap confirms expiry.\n4. **Rule out clock skew.** If the *client's* clock is fast, a token can appear expired early. Verify NTP sync. Skew is also why you should refresh slightly *before* expiry, not exactly at it.\n\n**The fix: refresh proactively**\n\n- **If you have a refresh token (OAuth):** implement the refresh flow. Before each request (or on a timer), check whether the access token is near expiry and, if so, exchange the refresh token for a new access token via the token endpoint. Refresh with a margin — e.g., renew when less than ~5 minutes (or 10–20% of lifetime) remains — rather than waiting for `exp`.\n- **If it's a client-credentials / service-to-service flow (no refresh token):** simply re-request a fresh token from the token endpoint when the current one nears expiry. Cache the token along with its expiry and re-fetch on demand.\n- **If you sign your own JWTs:** generate a new one with an updated `exp` per request or on a schedule; don't mint one at boot and reuse it forever.\n- **Add resilience:** on a 401, transparently obtain a fresh token and retry the request *once*. This handles edge cases (early expiry, revocation, clock skew) without surfacing the error to users. Guard against infinite retry loops by retrying at most once per request.\n- **Centralize it:** put token acquisition/refresh behind a single auth provider or HTTP interceptor/middleware so every outbound call goes through the same \"ensure a valid token\" path, with locking so concurrent requests don't trigger a refresh stampede.\n\n**Other causes to consider if it's not expiry**\n\n- **Session/cookie timeout** — if you authenticate with a server-side session rather than a bearer token, a one-hour idle or absolute session timeout produces the same pattern; the fix is re-authentication or session keep-alive.\n- **Rotating/short-lived signing keys** — if the API rotates its signing keys and your validator caches a stale JWKS, tokens may start failing; refresh the JWKS / key cache.\n- **Cached credentials in a connection or SDK** — some SDKs cache a token internally; ensure you're on a version that auto-refreshes, or configure its refresh behavior.\n- **Load-balancer or gateway token TTL** — an API gateway may enforce its own token lifetime independent of your issuer.\n\n**Recommended order of action:** decode the token to read `exp` (fastest confirmation), then implement proactive refresh with a safety margin plus a single retry-on-401, centralized in your HTTP client. That resolves the overwhelmingly likely cause and hardens you against the edge cases."}, {"id": "t3", "input": "Compare REST and gRPC for a microservices backend. What are the key tradeoffs?", "rubric": "Contrasts transport and wire format (REST HTTP/1.1+JSON vs gRPC HTTP/2+Protobuf); contrasts the contract/typing model (gRPC mandatory typed .proto with codegen vs optional OpenAPI); covers performance and payload size (HTTP/2 multiplexing); covers streaming (gRPC native unary/server/client/bidi vs REST SSE/WebSocket); covers browser/public reach and tooling/debuggability (REST universal, gRPC needs grpc-web+proxy); gives a clear when-to-pick-each recommendation; technically accurate.", "with_skill_output": "## t3\n\n**REST = HTTP/JSON, simple, universal. gRPC = HTTP/2 + Protobuf, fast, typed, streaming.**\n\n| Axis | REST | gRPC |\n|------|------|------|\n| Payload | JSON (text) | Protobuf (binary) |\n| Transport | HTTP/1.1 (or 2) | HTTP/2 |\n| Contract | OpenAPI (optional) | `.proto` (required, enforced) |\n| Speed/size | Slower, bigger | Faster, smaller |\n| Streaming | Limited (SSE/WS bolt-on) | Native: client/server/bi-di |\n| Codegen | Optional | Built-in, many langs |\n| Browser | Native | Needs grpc-web + proxy |\n| Debug | Easy (curl, browser) | Harder (binary, need tools) |\n| Versioning | Manual discipline | Protobuf field rules, backward-compat friendly |\n\ngRPC wins:\n- Internal service-to-service (east-west) traffic. Low latency, high throughput.\n- Polyglot teams — strict shared contract, generated clients.\n- Streaming needs (telemetry, chat, live feeds).\n- Tight perf/bandwidth budget.\n\nREST wins:\n- Public/external APIs. Universal client support, easy adoption.\n- Browser-facing without proxy.\n- Human-debuggable, curl-friendly, broad tooling/caching (HTTP caches, CDN).\n- Simple CRUD, low setup cost.\n\nTradeoffs:\n- gRPC: better perf + typing, but harder ops (debug, browser, infra must speak HTTP/2 end-to-end, LB must support).\n- REST: easier everywhere, but looser contract, more boilerplate, weaker streaming.\n\nCommon pattern: gRPC internal between services + REST/GraphQL gateway at edge for clients. Best of both.", "without_skill_output": "## t3\n\n**REST vs gRPC for a microservices backend**\n\nBoth are solid choices; the right one depends on who consumes the service and what your performance/tooling constraints are. Here is a structured comparison.\n\n**Protocol and wire format**\n- **REST** — typically HTTP/1.1 (HTTP/2 possible) with JSON over the wire. Text-based, human-readable, self-descriptive.\n- **gRPC** — HTTP/2 with Protocol Buffers (binary). Compact and fast to serialize/deserialize, but not human-readable without tooling.\n\n**Contract and schema**\n- **REST** — schema is optional; OpenAPI/Swagger is common but not enforced by the protocol. Looser coupling, easier to evolve ad hoc, but also easier to drift.\n- **gRPC** — a `.proto` file is the mandatory, strongly-typed contract. It generates client and server stubs in many languages, giving you compile-time type safety and a single source of truth. Strong contracts are a major advantage for internal service-to-service communication.\n\n**Performance**\n- **gRPC** generally wins: binary Protobuf is smaller and cheaper to encode/decode than JSON, and HTTP/2 brings multiplexing (many concurrent streams over one connection), header compression, and persistent connections. This matters at high request rates and for low-latency, chatty internal traffic.\n- **REST/JSON** has more overhead but is often \"fast enough,\" and HTTP/2 + compression narrows the gap.\n\n**Streaming**\n- **gRPC** natively supports unary, server-streaming, client-streaming, and bidirectional streaming — excellent for real-time feeds, large data transfers, and long-lived connections.\n- **REST** is request/response by nature; streaming requires workarounds (SSE, chunked transfer, WebSockets) that sit outside the core model.\n\n**Browser and external/public API support**\n- **REST** — works everywhere: browsers, curl, any HTTP client, with zero special tooling. Ideal for public APIs and third-party integrations.\n- **gRPC** — not directly callable from browsers; needs gRPC-Web plus a proxy (e.g., Envoy). Less convenient for public-facing or partner APIs.\n\n**Tooling, debugging, observability**\n- **REST** — vast ecosystem (curl, Postman, browser dev tools), easy to inspect because payloads are plain text. Lower barrier to entry.\n- **gRPC** — improving tooling (grpcurl, BloomRPC, server reflection), but binary payloads are harder to eyeball and require more specialized tools.\n\n**Error handling**\n- **REST** — leverages standard HTTP status codes (familiar, widely understood) plus body conventions.\n- **gRPC** — its own rich status code set and structured error details, consistent across languages but a separate model to learn.\n\n**Polyglot code generation**\n- **gRPC** — first-class, multi-language stub generation from the `.proto`. Big productivity win in a polyglot microservices estate.\n- **REST** — codegen exists via OpenAPI but is less central and more variable in quality.\n\n**Maturity / learning curve**\n- **REST** — ubiquitous, well understood, minimal onboarding cost.\n- **gRPC** — steeper learning curve (Protobuf, HTTP/2, codegen pipeline, proxies for browsers).\n\n**Recommendation / decision guide**\n\n- **Choose gRPC for internal service-to-service communication** where you control both ends and want low latency, high throughput, strong typed contracts, streaming, and polyglot stub generation. This is where it shines in a microservices backend.\n- **Choose REST for public/edge APIs, browser clients, third-party integrations, and anywhere human readability, broad tooling, and zero-friction consumption matter most.**\n- **A common, pragmatic hybrid:** gRPC between internal services, with a REST/JSON gateway (or gRPC-Gateway / GraphQL) at the edge for external consumers. This gives you internal performance and contracts without sacrificing external accessibility.\n\n**The core tradeoff in one line:** gRPC trades human-friendliness and universal reach for performance, streaming, and rigorous typed contracts; REST trades raw efficiency and built-in streaming for ubiquity, simplicity, and effortless tooling."}], "deepeval": {"results": [{"id": "t1", "with_skill_score": 1.0, "without_skill_score": 1.0, "score_delta": 0.0, "with_skill_reason": "The response thoroughly addresses all four evaluation steps. It clearly explains connection pooling as reusing pre-established connections and explicitly identifies the overhead avoided (TCP handshake, TLS, auth, session setup). The pool lifecycle is accurately described — borrowing, using, returning connections, and what happens when none are free (queue/block with acquire timeout). Key configuration parameters are named and meaningfully explained: max size, min/idle, idle timeout, max lifetime, and acquire timeout, each with practical context. Practical considerations are well-covered: the response identifies when pooling helps most (short web/API requests, high concurrency, high-latency TLS), and includes real caveats such as serverless environments multiplying connections across instances (with the concrete solution of PgBouncer), and connection leaks causing pool exhaustion. All information is technically accurate and concise.", "without_skill_reason": "The response comprehensively addresses all four evaluation steps. It explicitly identifies the overhead avoided (TCP handshake, TLS negotiation, authentication, session setup) as required by step 1. It describes the full pool lifecycle including acquiring, using, and returning connections, addresses pool exhaustion behavior (waiting, growing, or rejecting), and identifies max pool size as a limiting factor per step 2. It names all key configuration parameters (min/max size, acquire timeout, idle timeout, max lifetime, validation) and explains when pooling provides the most benefit per step 3. For step 4, it includes real-world caveats about serverless environments causing connection multiplication and mentions connection leaks via session-specific state not being reset between borrowers. All technical claims are accurate and consistent with the input requirements."}, {"id": "t2", "with_skill_score": 1.0, "without_skill_score": 1.0, "score_delta": 0.0, "with_skill_reason": "The Actual Output strongly aligns with all four evaluation steps. It correctly identifies token expiry (~3600s/1 hour TTL) as the primary cause and explains why the timing pattern occurs (works after auth, fails once token expires). It provides concrete diagnosis steps including decoding the 'exp' claim, comparing failure timestamps to token expiry, reading the 401 body/WWW-Authenticate header, and checking clock skew. The fix section correctly recommends proactive token refresh before expiry and a centralized retry-once-on-401 interceptor pattern, and explicitly states NOT to bump the TTL as a workaround. It also covers adjacent causes like clock skew, session/caching issues for long-lived jobs and service-to-service flows, and mentions NTP for clock correction. All technical details are accurate and relevant.", "without_skill_reason": "The Actual Output comprehensively addresses all four evaluation steps. It correctly identifies token expiry (~3600s/1 hour) as the primary cause and explains the timing pattern clearly. It provides concrete diagnosis steps including decoding the JWT's 'exp' claim, inspecting the WWW-Authenticate header and response body, and correlating failure timing with token issuance. The fix correctly emphasizes proactive refresh before expiry (with a safety margin), covers both refresh-token and client-credentials flows, and includes a centralized retry-once-on-401 strategy — notably without suggesting simply increasing the TTL. Adjacent causes are accurately covered, including session timeout, clock skew, rotating signing keys/JWKS, and SDK caching issues, all with technically accurate and non-misleading details."}, {"id": "t3", "with_skill_score": 1.0, "without_skill_score": 1.0, "score_delta": 0.0, "with_skill_reason": "The response comprehensively addresses all five required technical dimensions: transport/wire format (HTTP/1.1+JSON vs HTTP/2+Protobuf), contract/typing model (.proto required vs OpenAPI optional), performance and payload size (binary vs text, speed/size tradeoffs), streaming support (native client/server/bi-di vs SSE/WebSocket bolt-on), and browser/tooling accessibility (grpc-web+proxy requirement vs universal REST). The 'when to pick each' recommendations are clear, actionable, and logically grounded in the microservices context specified in the input. All technical claims are accurate: HTTP/2 for gRPC, Protobuf binary serialization, mandatory .proto schema, native streaming modes, and the grpc-web proxy requirement for browsers. The response also adds valuable practical depth with the versioning dimension and the common hybrid pattern (gRPC internal + REST gateway at edge), which is a well-known industry practice. No significant technical errors or omissions are present, and the table format makes the comparison immediately actionable.", "without_skill_reason": "The response comprehensively addresses all four evaluation steps. It clearly contrasts REST (HTTP/1.1 + JSON) and gRPC (HTTP/2 + Protobuf) on transport and wire format with technical accuracy. It explicitly covers the contract/typing distinction — mandatory .proto schemas with code generation for gRPC vs optional OpenAPI/Swagger for REST. Performance aspects including HTTP/2 multiplexing, binary vs text encoding, and payload size are compared directly against each other, and streaming capabilities (gRPC's native unary/server/client/bidirectional vs REST's SSE/WebSocket workarounds) are clearly contrasted. Browser/public API accessibility and tooling/debuggability are addressed with specifics (grpc-web, Envoy proxy, curl, Postman). The response concludes with a clear, actionable recommendation including a pragmatic hybrid approach. The response goes beyond the minimum requirements by also covering error handling, polyglot code generation, and maturity/learning curve, all of which add value without detracting from the core evaluation criteria."}], "mean_score_delta": 0.0, "num_cases": 3}}}]};
+(function () {
+  "use strict";
+
+  /* ------------------------------------------------------------ utilities */
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  function isNum(x) { return typeof x === "number" && isFinite(x); }
+  function fmt(n, d) {
+    if (!isNum(n)) return "—";
+    var dd = d == null ? (Math.abs(n) < 100 && n % 1 !== 0 ? 1 : 0) : d;
+    return n.toLocaleString("en-US", { minimumFractionDigits: dd, maximumFractionDigits: dd });
+  }
+  function fmtPct(p) {
+    if (!isNum(p)) return "—";
+    return (p > 0 ? "+" : p < 0 ? "−" : "") + fmt(Math.abs(p), 1) + "%";
+  }
+  function fmtDelta(n, d) {
+    if (!isNum(n)) return "—";
+    return (n > 0 ? "+" : n < 0 ? "−" : "±") + fmt(Math.abs(n), d == null ? 1 : d);
+  }
+
+  var BUCKETS = {
+    good: ["helps", "synergistic", "synergy"],
+    neutral: ["additive", "none", "no-effect", "no-token-claim"],
+    warn: ["mixed", "mixed-favorable", "mixed-unfavorable", "redundant", "sub-additive"],
+    bad: ["hurts", "conflicting", "antagonistic", "costs-more", "regression"]
+  };
+  function bucketOf(run) {
+    var label = ((run.verdict || {}).label || "").toLowerCase();
+    for (var b in BUCKETS) {
+      for (var i = 0; i < BUCKETS[b].length; i++) {
+        if (label.indexOf(BUCKETS[b][i]) === 0) return b;
+      }
+    }
+    return "neutral";
+  }
+
+  function decisiveQuality(run) {
+    var q = run.quality || {};
+    return run.kind === "combination" ? q.combo_vs_none : q.pairwise;
+  }
+  function qualityFlagged(run) {
+    var d = decisiveQuality(run) || {};
+    return isNum(d.losses) && isNum(d.wins) && d.losses > d.wins;
+  }
+  function qScore(run) {
+    var q = run.quality || {};
+    if (q.deepeval && isNum(q.deepeval.delta_vs_baseline)) return q.deepeval.delta_vs_baseline;
+    var d = decisiveQuality(run) || {};
+    if (isNum(d.mean_delta)) return d.mean_delta / 10;
+    if (isNum(d.wins) && isNum(d.losses)) return (d.wins - d.losses) / Math.max(1, (d.wins + d.losses + (d.ties || 0)));
+    return 0;
+  }
+  function costDelta(run) {
+    var h = ((run.metrics || {}).headline || {});
+    return isNum(h.cost_delta_pct) ? h.cost_delta_pct : null;
+  }
+  function skillNames(run) { return (run.skills || []).map(function (s) { return s.name; }); }
+  function armRole(run, arm) {
+    var n = (arm.skills || []).length, total = (run.skills || []).length;
+    if (n === 0) return "base";
+    if (total > 0 && n >= total) return "full";
+    return "single";
+  }
+  function titleOf(run) {
+    var names = skillNames(run);
+    return names.map(esc).join(' <span class="plus">+</span> ') || esc(run.id);
+  }
+  function wtlInline(d) {
+    if (!d || !isNum(d.wins)) return "—";
+    return '<span class="w">' + d.wins + "W</span>·<span class=\"t\">" + (d.ties || 0) +
+           'T</span>·<span class="l">' + d.losses + "L</span>";
+  }
+  function badge(run, b) {
+    var v = run.verdict || {};
+    var txt = esc(v.label || b).replace(/-/g, " ");
+    return '<span class="badge"><span class="dot"></span>' +
+           (v.emoji ? esc(v.emoji) + " " : "") + txt + "</span>";
+  }
+  function tone(v) { return !isNum(v) ? "dim" : v < 0 ? "pos" : v > 0 ? "neg" : "dim"; }
+  function runHref(run) { return "#run/" + esc(encodeURIComponent(String(run.id))); }
+
+  /* ------------------------------------------------------------ list card */
+  function card(run) {
+    var b = bucketOf(run);
+    var h = ((run.metrics || {}).headline || {});
+    var cd = h.cost_delta_pct, pd = h.primary_delta_pct;
+    var primary = isNum(pd)
+      ? '<span class="sv num ' + tone(pd) + '">' + fmtPct(pd) + "</span>"
+      : '<span class="sv small dim">no token claim</span>';
+    var primaryLbl = isNum(pd) ? esc(h.primary_label || "primary axis") : "mechanism";
+    var d = decisiveQuality(run);
+    return '<a class="card ' + b + '" href="' + runHref(run) + '">' +
+      '<div class="card-top"><h2>' + titleOf(run) + "</h2>" + badge(run, b) + "</div>" +
+      '<div class="stats">' +
+        '<div class="stat"><span class="lbl">cost Δ</span><span class="sv num ' + tone(cd) + '">' + fmtPct(cd) + "</span></div>" +
+        '<div class="stat"><span class="lbl">' + primaryLbl + "</span>" + primary + "</div>" +
+        '<div class="stat"><span class="lbl">quality</span><span class="sv small qline">' + wtlInline(d) + "</span></div>" +
+      "</div>" +
+      '<div class="card-meta"><span>' + esc(run.kind || "single") + '</span><span class="sep">·</span>' +
+        "<span>" + esc(run.date || "—") + '</span><span class="sep">·</span>' +
+        "<span>" + esc(run.tasks != null ? run.tasks : "?") + " tasks</span>" +
+        (qualityFlagged(run) ? '<span class="sep">·</span><span class="flag">⚑ quality</span>' : "") +
+        '<span class="go">View report →</span>' +
+      "</div></a>";
+  }
+
+  /* ------------------------------------------------------------- KPI strip */
+  function median(xs) {
+    if (!xs.length) return null;
+    var s = xs.slice().sort(function (a, b) { return a - b; });
+    var m = Math.floor(s.length / 2);
+    return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+  }
+  function renderKPIs(runs) {
+    var skills = {};
+    runs.forEach(function (r) { skillNames(r).forEach(function (n) { skills[n] = 1; }); });
+    var counts = { good: 0, neutral: 0, warn: 0, bad: 0 };
+    runs.forEach(function (r) { counts[bucketOf(r)]++; });
+    var deltas = runs.map(costDelta).filter(isNum);
+    var med = median(deltas);
+    var flags = runs.filter(qualityFlagged).length;
+    var segCls = { good: "sg", neutral: "sn", warn: "sw", bad: "sb" };
+    var spectrum = ["good", "neutral", "warn", "bad"].filter(function (k) { return counts[k] > 0; })
+      .map(function (k) { return '<span class="' + segCls[k] + '" style="flex:' + counts[k] + '"></span>'; }).join("");
+    var legend = '<div class="legend">' +
+      '<span class="lg"><i></i>' + counts.good + " helps</span>" +
+      '<span class="ln"><i></i>' + counts.neutral + " neutral</span>" +
+      '<span class="lw"><i></i>' + counts.warn + " mixed</span>" +
+      '<span class="lb"><i></i>' + counts.bad + " risk</span></div>";
+    var medCls = !isNum(med) ? "" : med < 0 ? "pos" : med > 0 ? "neg" : "";
+    document.getElementById("kpis").innerHTML =
+      '<div class="kpi"><span class="lbl">evaluations</span><div class="v">' + runs.length + "</div></div>" +
+      '<div class="kpi"><span class="lbl">skills covered</span><div class="v">' + Object.keys(skills).length + "</div></div>" +
+      '<div class="kpi wide"><span class="lbl">verdict mix</span>' +
+        (spectrum ? '<div class="spectrum">' + spectrum + "</div>" : "") + legend + "</div>" +
+      '<div class="kpi"><span class="lbl">median cost Δ</span><div class="v"><span class="' + medCls + '">' +
+        (med == null ? "—" : fmtPct(med)) + "</span><small>weighted, across runs</small></div></div>" +
+      '<div class="kpi"><span class="lbl">quality flags</span><div class="v"><span class="' +
+        (flags ? "flagged" : "") + '">' + (flags ? "⚑ " : "") + flags + "</span><small>baseline won</small></div></div>";
+  }
+
+  /* ----------------------------------------------------------- detail view */
+  function panel(title, inner, extraCls, sub) {
+    if (!inner) return "";
+    return '<section class="panel' + (extraCls ? " " + extraCls : "") + '">' +
+      (title ? "<h3>" + title + (sub ? "<small>" + sub + "</small>" : "") + "</h3>" : "") +
+      inner + "</section>";
+  }
+  function fold(label, inner, cls) {
+    if (!inner) return "";
+    return '<details class="fold"><summary>' + esc(label) + '</summary><div class="fold-body">' + inner + "</div></details>";
+  }
+  function rawBlock(name, obj) {
+    if (obj == null) return "";
+    var txt;
+    try { txt = JSON.stringify(obj, null, 2); } catch (e) { return ""; }
+    return fold("raw " + name, '<pre class="out small">' + esc(txt) + "</pre>");
+  }
+  function winnerClass(winner) {
+    if (!winner) return "";
+    var w = String(winner).toLowerCase();
+    if (w === "tie") return "win-tie";
+    return ["base", "baseline", "none", "without", "without_skill"].indexOf(w) >= 0 ? "win-base" : "win-arm";
+  }
+
+  function verdictPanel(run) {
+    var v = run.verdict || {};
+    var inner = "";
+    if (v.headline) inner += '<div class="reco"><span class="lbl">verdict</span>' + esc(v.headline) + "</div>";
+    if (v.bottom_line) inner += '<div class="reco"><span class="lbl">recommendation</span>' + esc(v.bottom_line) + "</div>";
+    return panel(null, inner, "verdict");
+  }
+
+  function statPanel(run) {
+    var h = ((run.metrics || {}).headline || {});
+    var cd = h.cost_delta_pct, pd = h.primary_delta_pct;
+    var q = run.quality || {}, de = q.deepeval || {};
+    var cells =
+      '<div class="stat"><span class="lbl">cost Δ (weighted)</span><span class="sv ' + tone(cd) + '">' + fmtPct(cd) +
+        '</span><div class="sub">eff. tokens vs baseline</div></div>' +
+      '<div class="stat"><span class="lbl">' + (isNum(pd) ? esc(h.primary_label || "primary axis") : "mechanism") + "</span>" +
+        (isNum(pd) ? '<span class="sv ' + tone(pd) + '">' + fmtPct(pd) + "</span>"
+                   : '<span class="sv dim" style="font-size:15px">no token claim</span><div class="sub">' +
+                     esc((run.metrics || {}).mechanism || "behavioral") + "</div>") + "</div>";
+    if (run.kind === "combination") {
+      var bs = q.combo_vs_best_single || {};
+      cells += '<div class="stat"><span class="lbl">combo vs none</span><span class="sv qline" style="font-size:17px">' +
+               wtlInline(q.combo_vs_none) + "</span></div>";
+      cells += '<div class="stat"><span class="lbl">vs best single' +
+               (bs.best_single ? " (" + esc(bs.best_single) + ")" : "") +
+               '</span><span class="sv qline" style="font-size:17px">' + wtlInline(bs) + "</span></div>";
+    } else {
+      var p = q.pairwise || {};
+      cells += '<div class="stat"><span class="lbl">blind judge</span><span class="sv qline" style="font-size:17px">' +
+               wtlInline(p) + "</span>" +
+               (isNum(p.mean_delta) ? '<div class="sub">mean Δ ' + fmtDelta(p.mean_delta) + "/10</div>" : "") + "</div>";
+    }
+    cells += '<div class="stat"><span class="lbl">GEval Δ</span><span class="sv ' +
+             (isNum(de.delta_vs_baseline) ? tone(-de.delta_vs_baseline) : "dim") + '" style="font-size:17px">' +
+             (de.available === false ? "n/a" : fmtDelta(de.delta_vs_baseline, 3)) + "</span></div>";
+    return panel(null, '<div class="statrow">' + cells + "</div>");
+  }
+
+  function costPanel(run) {
+    var arms = ((run.metrics || {}).arms || []).filter(function (a) { return a && a.name; });
+    if (!arms.length) return "";
+    var key = arms.some(function (a) { return isNum(a.cost_units); }) ? "cost_units" : "output_tokens";
+    var max = 0;
+    arms.forEach(function (a) { if (isNum(a[key])) max = Math.max(max, a[key]); });
+    if (!max) return "";
+    var rows = arms.map(function (a) {
+      var v = a[key];
+      var w = isNum(v) ? Math.max(2, (v / max) * 100) : 0;
+      return '<div class="bar-row"><span class="bar-name" title="' + esc(a.name) + '">' + esc(a.name) + "</span>" +
+        '<span class="bar-track"><span class="bar-fill ' + armRole(run, a) + '" style="width:' + w.toFixed(1) + '%"></span></span>' +
+        '<span class="bar-val">' + (isNum(v) ? fmt(v, 0) : "unmeasured") + "</span></div>";
+    }).join("");
+    var s = ((run.metrics || {}).setup) || null;
+    var setup = "";
+    if (s) {
+      var bits = [];
+      if (isNum(s.one_time_cost_units)) bits.push("one-time setup " + fmt(s.one_time_cost_units) + " eff-tok");
+      if (isNum(s.per_turn_saving_cost_units)) bits.push("saves ~" + fmt(s.per_turn_saving_cost_units) + " per turn");
+      if (isNum(s.breakeven_turns)) bits.push("breakeven ≈ " + fmt(s.breakeven_turns, 2) + " turns");
+      if (bits.length) setup = '<div class="setup-note">' + bits.join(" · ") + "</div>";
+    }
+    var unit = key === "cost_units" ? "effective tokens — lower is cheaper" : "output tokens — lower is cheaper";
+    return panel("Cost per arm", rows + setup, null, unit);
+  }
+
+  function interactionPanel(run) {
+    var it = run.interaction;
+    if (run.kind !== "combination" || !it) return "";
+    if (it.available === false) {
+      return panel("Interaction", '<div class="interaction-line">Not decomposed — ' +
+        esc(it.reason || "no single-skill arms in this design") + ".</div>");
+    }
+    var line = '<div class="interaction-line"><b>' + fmtDelta(it.value) + " eff-tok</b> vs additive prediction " +
+      fmt(it.additive_prediction) + " → <b>" + esc(it.classification || "?") + "</b>" +
+      (it.best_single ? " · best single: " + esc(it.best_single) +
+        (isNum(it.best_single_savings) ? " (" + fmt(it.best_single_savings) + ")" : "") : "") + "</div>";
+    var rows = [];
+    function row(k, v, strong) {
+      rows.push("<tr><td>" + (strong ? "<b>" + k + "</b>" : k) + '</td><td class="num">' +
+        (isNum(v) ? fmt(v) : esc(v == null ? "—" : v)) + "</td></tr>");
+    }
+    row("combined savings (combo vs base)", it.combined_savings, true);
+    var ie = it.individual_effects || {};
+    Object.keys(ie).forEach(function (k) { row("individual effect — " + esc(k), ie[k]); });
+    var me = it.marginal_effects || {};
+    Object.keys(me).forEach(function (k) { row("marginal — " + esc(k) + " (within stack)", me[k]); });
+    row("additive prediction", it.additive_prediction);
+    row("interaction (excess over additive)", it.value, true);
+    row("best single-skill savings", it.best_single_savings);
+    var table = '<table class="dtable"><tr><th>quantity</th><th class="num">value</th></tr>' + rows.join("") + "</table>";
+    var raw = rawBlock(esc(run.id) + ".interaction.json", (run._detail || {}).interaction);
+    return panel("Interaction", line + table + raw);
+  }
+
+  function deepevalPanel(run) {
+    var de = ((run.quality || {}).deepeval) || null;
+    var raw = rawBlock(esc(run.id) + ".deepeval.json", (run._detail || {}).deepeval);
+    if (!de && !raw) return "";
+    var inner = "";
+    if (de && de.available === false) {
+      inner += '<div class="fallback">deepeval was unavailable for this run' +
+               (de.reason ? " — " + esc(de.reason) : "") + ".</div>";
+    } else if (de) {
+      var means = de.arm_means || {};
+      var rows = Object.keys(means).map(function (k) {
+        return "<tr><td>" + esc(k) + '</td><td class="num">' + fmt(means[k], 3) + "</td></tr>";
+      }).join("");
+      if (rows) inner += '<table class="dtable"><tr><th>arm</th><th class="num">GEval mean (0–1)</th></tr>' + rows + "</table>";
+      if (isNum(de.delta_vs_baseline)) {
+        inner += '<div class="setup-note">Δ vs baseline: <b class="num">' + fmtDelta(de.delta_vs_baseline, 3) +
+                 "</b> — GEval is an absolute cross-check; it saturates and won't catch fine pairwise gaps.</div>";
+      }
+    }
+    return panel("deepeval (GEval)", inner + raw);
+  }
+
+  function caseFor(run, t, idx) {
+    var cs = ((run._detail || {}).cases);
+    if (!cs || !cs.length) return null;
+    for (var i = 0; i < cs.length; i++) {
+      if (cs[i] && String(cs[i].id) === String(t.id)) return cs[i];
+    }
+    return cs[idx] || null;
+  }
+  function col(label, cls, text) {
+    return '<div class="col"><div class="colhead"><span class="armpill ' + cls + '">' + esc(label) +
+           '</span></div><pre class="out">' + esc(text == null ? "" : String(text)) + "</pre></div>";
+  }
+  function compareBlock(run, c) {
+    if (!c) return "";
+    var pre = "";
+    if (c.input) pre += fold("Task prompt", '<pre class="out small">' + esc(c.input) + "</pre>");
+    if (c.rubric) pre += fold("Rubric", '<pre class="out small">' + esc(c.rubric) + "</pre>");
+    if (run.kind !== "combination") {
+      if (c.with_skill_output == null && c.without_skill_output == null) return pre;
+      return pre + '<div class="compare">' +
+        col("WITH skill", "with", c.with_skill_output) +
+        col("WITHOUT skill", "base", c.without_skill_output) + "</div>";
+    }
+    var arms = c.arms || {};
+    var keys = Object.keys(arms);
+    if (!keys.length) return pre;
+    var baseKey = null, comboKey = null;
+    ["base", "baseline", "none", "WITHOUT", "without"].forEach(function (k) {
+      if (!baseKey && arms[k] != null) baseKey = k;
+    });
+    ((run.metrics || {}).arms || []).forEach(function (a) {
+      if (!comboKey && armRole(run, a) === "full" && arms[a.name] != null) comboKey = a.name;
+    });
+    if (!comboKey && arms.combo != null) comboKey = "combo";
+    var html = pre;
+    if (baseKey != null && comboKey != null) {
+      html += '<div class="compare">' + col(comboKey + " (all skills)", "with", arms[comboKey]) +
+              col(baseKey + " (no skills)", "base", arms[baseKey]) + "</div>";
+    }
+    var others = keys.filter(function (k) { return k !== baseKey && k !== comboKey; });
+    if (others.length) {
+      html += fold("Other arms (" + others.join(", ") + ")",
+        others.map(function (k) {
+          return '<div class="colhead" style="margin-top:9px"><span class="armpill with">' + esc(k) +
+                 '</span></div><pre class="out">' + esc(arms[k] == null ? "" : String(arms[k])) + "</pre>";
+        }).join(""));
+    }
+    return html;
+  }
+  function tasksPanel(run) {
+    var ts = run.per_task || [];
+    var hasCases = !!(((run._detail || {}).cases) || []).length;
+    if (!ts.length && !hasCases) return "";
+    var combo = run.kind === "combination";
+    var files = run.files || {};
+    var blocks = (ts.length ? ts : (((run._detail || {}).cases) || [])).map(function (t, i) {
+      var head = '<div class="task-head"><span class="tid">' + esc(t.id || "t" + (i + 1)) + "</span>" +
+                 esc(t.title || "") + "</div>";
+      var sub = [];
+      if (t.winner) {
+        sub.push((combo ? "combo vs none: " : "winner: ") + '<b class="' + winnerClass(t.winner) + '">' +
+                 esc(t.winner) + "</b>" + (t.margin ? " (" + esc(t.margin) + ")" : ""));
+      }
+      var sc = t.scores || {};
+      var scoreTxt = Object.keys(sc).map(function (k) { return esc(k) + " " + fmt(sc[k], 2); }).join(" · ");
+      if (scoreTxt) sub.push("judge scores: <b>" + scoreTxt + "</b>");
+      if (combo && t.best_single) {
+        var cvb = t.combo_vs_best || {};
+        sub.push("best single: <b>" + esc(t.best_single) + "</b>" +
+          (cvb.result ? ' — combo <b class="' + (cvb.result === "win" ? "win-arm" : cvb.result === "loss" ? "win-base" : "win-tie") +
+            '">' + esc(cvb.result) + "</b>" + (cvb.margin ? " (" + esc(cvb.margin) + ")" : "") : ""));
+      }
+      var ge = t.deepeval || {};
+      var geTxt = Object.keys(ge).map(function (k) { return esc(k) + " " + fmt(ge[k], 2); }).join(" · ");
+      if (geTxt) sub.push("GEval: " + geTxt);
+      var c = caseFor(run, t, i);
+      var body = c ? compareBlock(run, c)
+        : '<p class="fallback">Verbatim outputs aren\u2019t embedded — no <code>' + esc(run.id) +
+          ".deepeval.cases.json</code> was found next to the summary at build time. " +
+          (files.records ? 'Read them in the <a href="' + esc(files.records) + '">records companion</a>.'
+                         : "See the records companion in reports/.") + "</p>";
+      return '<div class="task">' + head +
+             (sub.length ? '<div class="task-sub">' + sub.join("<br>") + "</div>" : "") + body + "</div>";
+    }).join("");
+    var raw = rawBlock(esc(run.id) + ".judge.verdicts.json", (run._detail || {}).judge);
+    return panel("Tasks — judge verdicts &amp; outputs",
+      blocks + raw, null, hasCases ? "verbatim, transcript-sourced" : null);
+  }
+
+  function caveatsPanel(run) {
+    var c = run.caveats || [];
+    if (!c.length) return "";
+    return panel("Caveats", '<ul class="cavlist">' +
+      c.map(function (x) { return "<li>" + esc(x) + "</li>"; }).join("") + "</ul>");
+  }
+  function artifactsPanel(run) {
+    var f = run.files || {};
+    var label = { report: "Report", records: "Records (verbatim A/B)", deepeval_md: "deepeval",
+                  deepeval_json: "deepeval JSON", deepeval_cases: "deepeval cases",
+                  interaction_md: "Interaction", interaction_json: "Interaction JSON",
+                  judge_verdicts_md: "Judge verdicts", judge_verdicts_json: "Judge verdicts JSON" };
+    var links = Object.keys(f).filter(function (k) { return f[k]; }).map(function (k) {
+      return '<a href="' + esc(f[k]) + '">' + esc(label[k] || k) + "</a>";
+    });
+    if (!links.length) return "";
+    return panel("Artifacts", '<div class="files">' + links.join("") + "</div>");
+  }
+
+  function renderDetail(run) {
+    var b = bucketOf(run);
+    var modeTags = (run.skills || []).filter(function (s) { return s.mode; })
+      .map(function (s) { return '<span class="tag">' + esc(s.name) + ": " + esc(s.mode) + "</span>"; }).join("");
+    return '<div class="dwrap ' + b + '" style="--vc:var(--' + b + ')">' +
+      '<a class="back" href="#">← All evaluations</a>' +
+      '<div class="dhead"><h1>' + titleOf(run) + "</h1>" + badge(run, b) + "</div>" +
+      '<div class="tagrow"><span class="tag kind">' + esc(run.kind || "single") + "</span>" +
+        '<span class="tag">' + esc(((run.metrics || {}).mechanism) || "—") + "</span>" + modeTags +
+        (run.design ? '<span class="tag">' + esc(run.design) + "</span>" : "") + "</div>" +
+      '<div class="dmeta">' + esc(run.date || "—") + '<span class="sep">·</span>run ' +
+        esc(run.run != null ? run.run : "—") + '<span class="sep">·</span>' +
+        esc(run.tasks != null ? run.tasks : "?") + " tasks" +
+        (qualityFlagged(run) ? '<span class="sep">·</span><span class="flag">⚑ baseline won on quality</span>' : "") + "</div>" +
+      verdictPanel(run) +
+      statPanel(run) +
+      costPanel(run) +
+      interactionPanel(run) +
+      deepevalPanel(run) +
+      tasksPanel(run) +
+      caveatsPanel(run) +
+      artifactsPanel(run) +
+      "</div>";
+  }
+
+  /* ------------------------------------------------------- state & render */
+  var DATA = window.__SKILL_EVAL_DATA__;
+  var state = { q: "", kind: "all", buckets: {}, sort: "date" };
+
+  function visibleRuns() {
+    var runs = (DATA && DATA.runs) || [];
+    var anyBucket = Object.keys(state.buckets).some(function (k) { return state.buckets[k]; });
+    var q = state.q.trim().toLowerCase();
+    var out = runs.filter(function (r) {
+      if (state.kind !== "all" && (r.kind || "single") !== state.kind) return false;
+      if (anyBucket && !state.buckets[bucketOf(r)]) return false;
+      if (q) {
+        var hay = (r.id + " " + skillNames(r).join(" ")).toLowerCase();
+        if (hay.indexOf(q) < 0) return false;
+      }
+      return true;
+    });
+    out.sort(function (a, b) {
+      if (state.sort === "savings") {
+        var ca = costDelta(a), cb = costDelta(b);
+        return (ca == null ? 1e9 : ca) - (cb == null ? 1e9 : cb);
+      }
+      if (state.sort === "quality") return qScore(b) - qScore(a);
+      if (state.sort === "name") return String(a.id).localeCompare(String(b.id));
+      var d = String(b.date || "").localeCompare(String(a.date || ""));
+      return d !== 0 ? d : String(a.id).localeCompare(String(b.id));
+    });
+    return out;
+  }
+
+  function render() {
+    var runs = visibleRuns();
+    var total = ((DATA && DATA.runs) || []).length;
+    document.getElementById("grid").innerHTML = runs.map(card).join("");
+    var cl = document.getElementById("countLine");
+    cl.hidden = false;
+    cl.textContent = runs.length === total
+      ? total + " evaluation" + (total === 1 ? "" : "s") + " on file"
+      : runs.length + " of " + total + " evaluations match";
+  }
+
+  /* ---------------------------------------------------------------- routes */
+  function route() {
+    var detailEl = document.getElementById("detail");
+    var listEl = document.getElementById("listView");
+    var h = location.hash || "";
+    if (h.indexOf("#run/") === 0 && DATA && DATA.runs) {
+      var id = h.slice(5);
+      try { id = decodeURIComponent(id); } catch (e) { /* keep raw */ }
+      var run = null;
+      DATA.runs.forEach(function (r) { if (String(r.id) === id) run = r; });
+      if (run) {
+        detailEl.innerHTML = renderDetail(run);
+        detailEl.hidden = false;
+        listEl.hidden = true;
+        window.scrollTo(0, 0);
+        return;
+      }
+    }
+    detailEl.hidden = true;
+    detailEl.innerHTML = "";
+    listEl.hidden = false;
+  }
+
+  function boot() {
+    var gen = document.getElementById("genMeta");
+    if (!DATA || !DATA.runs) {
+      document.getElementById("empty").hidden = false;
+      gen.textContent = "template — no data injected yet";
+      return;
+    }
+    gen.textContent = "generated " + (DATA.generated_at || "—") + " · schema v" + (DATA.schema_version || "?");
+    if (!DATA.runs.length) { document.getElementById("empty").hidden = false; return; }
+    document.getElementById("kpis").hidden = false;
+    document.getElementById("toolbar").hidden = false;
+    renderKPIs(DATA.runs);
+    render();
+
+    document.getElementById("q").addEventListener("input", function (e) {
+      state.q = e.target.value; render();
+    });
+    document.querySelectorAll("[data-kind]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        state.kind = btn.getAttribute("data-kind");
+        document.querySelectorAll("[data-kind]").forEach(function (b) {
+          b.setAttribute("aria-pressed", String(b === btn));
+        });
+        render();
+      });
+    });
+    document.querySelectorAll("[data-bucket]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var k = btn.getAttribute("data-bucket");
+        state.buckets[k] = !state.buckets[k];
+        btn.setAttribute("aria-pressed", String(!!state.buckets[k]));
+        render();
+      });
+    });
+    document.getElementById("sort").addEventListener("change", function (e) {
+      state.sort = e.target.value; render();
+    });
+
+    window.addEventListener("hashchange", route);
+    route();
+  }
+
+  /* ------------------------------------------------------------- theming */
+  (function theme() {
+    var root = document.documentElement, KEY = "skilleval-theme", initial = null;
+    var btn = document.getElementById("themeBtn");
+    function sync() {
+      btn.textContent = root.getAttribute("data-theme") === "dark" ? "☀" : "☾";
+    }
+    try { initial = localStorage.getItem(KEY); } catch (e) { /* file:// without storage */ }
+    if (!initial && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) {
+      initial = "dark";
+    }
+    if (initial) root.setAttribute("data-theme", initial);
+    sync();
+    btn.addEventListener("click", function () {
+      var next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
+      root.setAttribute("data-theme", next);
+      try { localStorage.setItem(KEY, next); } catch (e) { /* ignore */ }
+      sync();
+    });
+  })();
+
+  boot();
+})();
+</script>
+</body>
+</html>

@@ -447,6 +447,107 @@ pairwise gaps the blind judge catches). Report it **alongside** the blind judge
 as a complementary cross-check, never as a replacement, and print the
 `.deepeval.md` path in chat alongside the report and records paths.
 
+### Phase 7 — Summary JSON + Skill Harness Dashboard (REQUIRED)
+
+The Markdown report is the human/audit layer. Phase 7 publishes the same result
+into the **data layer** — a small, versioned JSON next to the report — and
+refreshes the **Skill Harness Dashboard**, the single static page that shows
+every evaluation in `reports/` as a report card so a team can govern its skill
+portfolio (adopt / reject / re-run) without re-reading every report.
+
+**1. Write the summary JSON** to
+`reports/<skill-name>-eval-<n>.summary.json` (combination:
+`reports/<combo>-combo-eval-<n>.summary.json`) — same base name as the report
+plus `.summary.json`. The full schema and field reference live at the top of
+`agent_tools/build_dashboard.py`; this is the shape (single-skill; plain JSON —
+copy, fill, and delete what you didn't measure):
+
+```json
+{
+  "schema_version": 1,
+  "id": "<report basename, e.g. my-skill-eval-1>",
+  "kind": "single",
+  "skills": [{"name": "<skill>", "mode": "<mode-if-any>", "mechanism": "output"}],
+  "design": "with-vs-without (single-injection, multi-task)",
+  "run": 1,
+  "date": "YYYY-MM-DD",
+  "tasks": 3,
+  "verdict": {
+    "label": "helps",
+    "emoji": "✅",
+    "headline": "<the report's one-line joint token+quality verdict>",
+    "bottom_line": "<the report's Bottom line>"
+  },
+  "metrics": {
+    "mechanism": "output",
+    "primary_axis": "output_tokens",
+    "headline": {"cost_delta_pct": -48.5, "primary_delta_pct": -58.9,
+                 "primary_label": "output tokens"},
+    "arms": [
+      {"name": "WITHOUT", "skills": [], "cost_units": 21799, "output_tokens": 4060},
+      {"name": "WITH", "skills": ["<skill>"], "cost_units": 11235, "output_tokens": 1668}
+    ],
+    "setup": {"one_time_cost_units": 1396, "per_turn_saving_cost_units": 3987,
+              "breakeven_turns": 0.35}
+  },
+  "quality": {
+    "pairwise": {"comparison": "with_vs_without", "wins": 0, "ties": 0,
+                 "losses": 3, "mean_delta": -1.0},
+    "deepeval": {"available": true, "arm_means": {"WITH": 1.0, "WITHOUT": 1.0},
+                 "delta_vs_baseline": 0.0}
+  },
+  "per_task": [
+    {"id": "t1", "title": "<short title>", "winner": "WITHOUT", "margin": "slight",
+     "scores": {"WITH": 8, "WITHOUT": 9}, "deepeval": {"WITH": 1.0, "WITHOUT": 1.0}}
+  ],
+  "caveats": ["small-n (3 tasks, 1 run)"],
+  "files": {"report": "<basename>.md", "records": "<basename>-records.md",
+            "deepeval_md": "<basename>.deepeval.md"}
+}
+```
+
+A **combination** summary uses `"kind": "combination"`, lists every skill in
+`skills`, one `metrics.arms` entry **per subset** (base / each single / combo,
+with each arm's injected `skills` list), and adds the `interaction` block
+(classification, `value` = excess over additive, `combined_savings`,
+`additive_prediction`, `individual_effects`, `marginal_effects`, `best_single`,
+`best_single_savings` — all from `interaction_effects.py`'s output) plus
+`quality.combo_vs_none` and `quality.combo_vs_best_single` (from
+`judge_planner.py resolve`'s tally). The tracked examples
+`reports/caveman-eval-1.summary.json` and
+`reports/caveman+karpathy-combo-eval-1.summary.json` are complete references
+for both kinds.
+
+**HARD RULE — the summary is a projection of the report, never a second
+computation.** Every number must equal a figure that is already in the report
+or its JSON artifacts (`*.interaction.json`, `*.judge.verdicts.json`,
+`*.deepeval.json` — all transcript-sourced). Do not re-derive, re-round
+differently, or estimate. Anything unmeasured is **omitted** (or flagged
+`"available": false`), exactly as the report marks it `unmeasured`.
+
+**2. Validate, then rebuild the dashboard** with the bundled stdlib-only
+builder (no deps, no network):
+
+```
+python agent_tools/build_dashboard.py --check --reports reports
+python agent_tools/build_dashboard.py --reports reports
+```
+
+`--check` schema-validates every `reports/*.summary.json` and prints
+errors/warnings — fix the summary (not the validator) until it passes. The
+second command writes `reports/index.json` (every valid summary in one
+machine-readable file, for CI gates and tooling) and `reports/dashboard.html`
+(the self-contained governance page with the data embedded — opens from
+`file://`, no server). The build also embeds each run's sibling JSON
+artifacts (`*.deepeval.cases.json` — the verbatim per-task arm outputs —
+`*.deepeval.json`, `*.interaction.json`, `*.judge.verdicts.json`) so every
+card clicks through to a full detail page with the WITH/WITHOUT output
+comparison and deepeval results — one more reason those deliverables stay in
+`reports/`. Never hand-edit the two outputs; regenerate them.
+
+**3. Print the dashboard path** in chat alongside the report, records, and
+deepeval paths, e.g. "Dashboard refreshed: `reports/dashboard.html`".
+
 ---
 
 ## Combination mode (2+ skills)
@@ -588,7 +689,10 @@ quality regression, or a combo the judge rates below a single skill, is a
 regression, not a win. Write the verbatim records companion
 `reports/<combo>-combo-eval-<n>-records.md` from the transcript as in single-skill
 mode; with >2 arms, lead with baseline vs combo side by side and list the remaining
-arms below.
+arms below. **Phase 7 then writes the combination summary**
+(`reports/<combo>-combo-eval-<n>.summary.json` — `kind: "combination"`, one arm
+per subset, plus the `interaction` block) and refreshes the dashboard, exactly as
+in single-skill mode.
 
 ### Phase 6 (combination) — deepeval
 
@@ -630,6 +734,11 @@ replacement.
   (Phase 6) and keep its `*.deepeval.{json,md,cases.json}` outputs in `reports/`;
   the report must carry the deepeval section. If it cannot run, mark it
   `unavailable — <reason>` — never silently skip or delete its outputs.
+- **The dashboard mirrors the report.** The Phase 7 summary JSON is a
+  *projection* of the report's transcript-sourced numbers — never a second
+  computation, never an estimate. `reports/index.json` and
+  `reports/dashboard.html` are generated by `build_dashboard.py`, never
+  hand-edited, and refreshed after every evaluation.
 - **Combination = interaction, sourced.** When combining skills, the headline must
   include the **interaction** (synergy / redundancy / conflict) from
   `interaction_effects.py`, computed from transcript-attributed arms — never
@@ -659,10 +768,18 @@ Bundled inside this skill's own directory (they travel with it on install):
   inputs: the interaction `spec.json`, the `judge.spec.json`, the N-arm
   `deepeval.cases.json`, and the `deliverables.json` for the records file (warns +
   exits non-zero on a stubbed arm). Stdlib-only.
+- `agent_tools/build_dashboard.py` — **(Phase 7)** validates every
+  `reports/*.summary.json` against the versioned schema (in its docstring) and
+  builds the **Skill Harness Dashboard**: `reports/index.json` +
+  a self-contained `reports/dashboard.html`. Stdlib-only; `--check` is the
+  validate-only CI mode.
 - `templates/report-template.md` — single-skill report skeleton.
 - `templates/combo-report-template.md` — **(combination mode)** multi-skill report
   skeleton (interaction decomposition + synergy verdict).
 - `templates/records-template.md` — verbatim WITH/WITHOUT records companion.
+- `templates/dashboard.html` — **(Phase 7)** the Skill Harness Dashboard
+  template (single file, vanilla HTML/CSS/JS, zero dependencies);
+  `build_dashboard.py` embeds the summaries into it.
 
 Installed alongside the skill or kept in the source repo:
 
@@ -673,4 +790,7 @@ Installed alongside the skill or kept in the source repo:
 - `docs/combination-eval.md` — **(combination mode)** designs, the interaction
   formula, classification, and the honest scope (combination-when-applied, not
   co-triggering).
+- `docs/dashboard.md` — the Skill Harness Dashboard: the three-layer output
+  design, the summary schema + validation rules, the UI guide, and governance
+  workflows (CI gates over `reports/index.json`).
 - `docs/methodology.md`, `docs/token-measurement.md`, `docs/architecture.md`.

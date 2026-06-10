@@ -49,3 +49,9 @@ jobs:
       - name: interaction_effects.py imports & runs on stdlib only
         working-directory: skills/skill-evaluator/agent_tools
         run: python interaction_effects.py --help
+      - name: build_dashboard.py imports & runs on stdlib only
+        working-directory: skills/skill-evaluator/agent_tools
+        run: python build_dashboard.py --help
+      # Validate the tracked dashboard data layer (reports/*.summary.json).
+      - name: build_dashboard.py validates the tracked summaries
+        run: python skills/skill-evaluator/agent_tools/build_dashboard.py --check --reports reports
