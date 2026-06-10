@@ -49,6 +49,11 @@
 }
 /* ------------------------------------------------------------------- base */
 *{box-sizing:border-box}
+/* The JS toggles visibility via the `hidden` attribute. Author rules like
+   `.empty{display:flex}` outrank the UA `[hidden]{display:none}` at equal
+   specificity, so without this reset a `hidden` section (e.g. the empty-state
+   box) still renders. !important keeps `hidden` authoritative everywhere. */
+[hidden]{display:none!important}
 html,body{margin:0;padding:0}
 body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--sans);-webkit-font-smoothing:antialiased}
 a{color:var(--accent);text-decoration:none}
@@ -186,12 +191,18 @@ select{background:var(--panel);border:1px solid var(--border);border-radius:8px;
 .bar-name{font:600 10.5px/1.2 var(--mono);letter-spacing:.05em;color:var(--muted);
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-transform:uppercase}
 .bar-track{height:9px;background:var(--track);border-radius:999px;overflow:hidden}
-.bar-fill{height:100%;border-radius:999px}
+.bar-fill{display:block;height:100%;border-radius:999px}
 .bar-fill.base{background:var(--border-strong)}
 .bar-fill.single{background:color-mix(in srgb, var(--accent) 55%, var(--border-strong))}
 .bar-fill.full{background:var(--accent)}
 .bar-val{font:600 11.5px/1 var(--mono);font-variant-numeric:tabular-nums;text-align:right}
 .setup-note{margin-top:12px;font:12.5px/1.5 var(--sans);color:var(--muted)}
+.explain{margin:0 0 13px;padding:11px 13px;background:var(--accent-soft);
+  border:1px solid color-mix(in srgb, var(--accent) 22%, transparent);border-radius:9px;
+  font:12.5px/1.6 var(--sans);color:var(--muted)}
+.explain b{color:var(--ink);font-weight:650}
+.lbl[title]{cursor:help}
+abbr[title]{cursor:help;text-decoration:underline dotted;text-underline-offset:2px}
 .interaction-line{font:13px/1.6 var(--sans);color:var(--muted)}
 .interaction-line b{color:var(--ink);font-weight:650}
 
@@ -271,7 +282,7 @@ details.fold>.fold-body{margin-top:8px}
 <div id="listView">
   <section class="hero container">
     <h1>Skill Harness Dashboard</h1>
-    <p>Every <a href="https://github.com/takehiro177/skill-evaluator">skill-evaluator</a> run as a report card — blind A/B, transcript-sourced, cost-weighted. Click a card for the full detail: judge verdicts, deepeval results, and the verbatim WITH/WITHOUT outputs.</p>
+    <p>Every <a href="https://github.com/takehiro177/skill-evaluator">skill-evaluator</a> run as a report card — blind A/B, transcript-sourced, cost-weighted. Click a card for the full detail: blind judge verdicts, G-Eval rubric scores (an LLM-as-judge quality check from the deepeval library), and the verbatim WITH/WITHOUT outputs.</p>
   </section>
 
   <section class="kpis container" id="kpis" hidden></section>
@@ -392,10 +403,24 @@ window.__SKILL_EVAL_DATA__ = null /*__SKILL_EVAL_DATA__*/;
     var names = skillNames(run);
     return names.map(esc).join(' <span class="plus">+</span> ') || esc(run.id);
   }
-  function wtlInline(d) {
+  // Blind-judge record, written from the tested arm's point of view and naming
+  // both sides so "who won what" needs no decoding: green = subject won that
+  // many tasks, red = opponent won, muted = ties.
+  function wtlInline(d, subj, opp) {
     if (!d || !isNum(d.wins)) return "—";
-    return '<span class="w">' + d.wins + "W</span>·<span class=\"t\">" + (d.ties || 0) +
-           'T</span>·<span class="l">' + d.losses + "L</span>";
+    subj = subj || "skill"; opp = opp || "baseline";
+    return '<span class="w" title="' + esc(subj) + ' judged better">' + d.wins + " " + esc(subj) + "</span>" +
+           ' · <span class="t" title="judged equal">' + (d.ties || 0) + " tie</span>" +
+           ' · <span class="l" title="' + esc(opp) + ' judged better">' + d.losses + " " + esc(opp) + "</span>";
+  }
+  function qualityCell(label, d, subj, opp, tip, extraSub) {
+    var n = d && isNum(d.wins) ? d.wins + (d.ties || 0) + d.losses : 0;
+    var sub = n ? "blind judge · " + n + (n === 1 ? " task" : " tasks") : "";
+    if (extraSub) sub = extraSub + (sub ? " · " + sub : "");
+    return '<div class="stat"><span class="lbl">' + label + "</span>" +
+      '<span class="sv qline" style="font-size:17px"' + (tip ? ' title="' + esc(tip) + '"' : "") + ">" +
+      wtlInline(d, subj, opp) + "</span>" +
+      (sub ? '<div class="sub">' + sub + "</div>" : "") + "</div>";
   }
   function badge(run, b) {
     var v = run.verdict || {};
@@ -416,12 +441,14 @@ window.__SKILL_EVAL_DATA__ = null /*__SKILL_EVAL_DATA__*/;
       : '<span class="sv small dim">no token claim</span>';
     var primaryLbl = isNum(pd) ? esc(h.primary_label || "primary axis") : "mechanism";
     var d = decisiveQuality(run);
+    var qSubj = run.kind === "combination" ? "combo" : "skill";
     return '<a class="card ' + b + '" href="' + runHref(run) + '">' +
       '<div class="card-top"><h2>' + titleOf(run) + "</h2>" + badge(run, b) + "</div>" +
       '<div class="stats">' +
         '<div class="stat"><span class="lbl">cost Δ</span><span class="sv num ' + tone(cd) + '">' + fmtPct(cd) + "</span></div>" +
         '<div class="stat"><span class="lbl">' + primaryLbl + "</span>" + primary + "</div>" +
-        '<div class="stat"><span class="lbl">quality</span><span class="sv small qline">' + wtlInline(d) + "</span></div>" +
+        '<div class="stat"><span class="lbl">quality</span><span class="sv small qline" title="Blind judge: tasks won by each side">' +
+          wtlInline(d, qSubj, "baseline") + "</span></div>" +
       "</div>" +
       '<div class="card-meta"><span>' + esc(run.kind || "single") + '</span><span class="sep">·</span>' +
         "<span>" + esc(run.date || "—") + '</span><span class="sep">·</span>' +
@@ -510,19 +537,24 @@ window.__SKILL_EVAL_DATA__ = null /*__SKILL_EVAL_DATA__*/;
                    : '<span class="sv dim" style="font-size:15px">no token claim</span><div class="sub">' +
                      esc((run.metrics || {}).mechanism || "behavioral") + "</div>") + "</div>";
     if (run.kind === "combination") {
+      cells += qualityCell("combo vs baseline", q.combo_vs_none, "combo", "baseline",
+        "Blind judge, per task: which answer is better — all skills combined, or the no-skills baseline.");
+      // Only present when single-skill arms exist (factorial / leave-one-out).
+      // combined-vs-baseline designs have no "best single", so omit the cell
+      // rather than render a phantom "—" for a comparison that never ran.
       var bs = q.combo_vs_best_single || {};
-      cells += '<div class="stat"><span class="lbl">combo vs none</span><span class="sv qline" style="font-size:17px">' +
-               wtlInline(q.combo_vs_none) + "</span></div>";
-      cells += '<div class="stat"><span class="lbl">vs best single' +
-               (bs.best_single ? " (" + esc(bs.best_single) + ")" : "") +
-               '</span><span class="sv qline" style="font-size:17px">' + wtlInline(bs) + "</span></div>";
+      if (isNum(bs.wins)) {
+        var bsName = bs.best_single || "best single";
+        cells += qualityCell("combo vs best single (" + esc(bsName) + ")", bs, "combo", bsName,
+          "Blind judge, per task: combo vs the single strongest skill (" + esc(bsName) + ") on its own.");
+      }
     } else {
       var p = q.pairwise || {};
-      cells += '<div class="stat"><span class="lbl">blind judge</span><span class="sv qline" style="font-size:17px">' +
-               wtlInline(p) + "</span>" +
-               (isNum(p.mean_delta) ? '<div class="sub">mean Δ ' + fmtDelta(p.mean_delta) + "/10</div>" : "") + "</div>";
+      cells += qualityCell("blind judge", p, "with skill", "baseline",
+        "Blind judge, per task: the answer with the skill vs without it.",
+        isNum(p.mean_delta) ? "mean score Δ " + fmtDelta(p.mean_delta) + "/10" : null);
     }
-    cells += '<div class="stat"><span class="lbl">GEval Δ</span><span class="sv ' +
+    cells += '<div class="stat"><span class="lbl" title="G-Eval (deepeval library): an LLM judge scores each arm’s answer 0–1 against the task rubric. This is the skill arm’s score minus the no-skill baseline.">GEval Δ</span><span class="sv ' +
              (isNum(de.delta_vs_baseline) ? tone(-de.delta_vs_baseline) : "dim") + '" style="font-size:17px">' +
              (de.available === false ? "n/a" : fmtDelta(de.delta_vs_baseline, 3)) + "</span></div>";
     return panel(null, '<div class="statrow">' + cells + "</div>");
@@ -588,22 +620,31 @@ window.__SKILL_EVAL_DATA__ = null /*__SKILL_EVAL_DATA__*/;
     var de = ((run.quality || {}).deepeval) || null;
     var raw = rawBlock(esc(run.id) + ".deepeval.json", (run._detail || {}).deepeval);
     if (!de && !raw) return "";
+    var notRun = !!(de && de.available === false);
+    // Skip the explainer when G-Eval wasn't run — there are no scores to explain,
+    // so the only line should be the "not run" note.
+    var intro = notRun ? "" : '<div class="explain"><b>What is G-Eval?</b> It is an LLM-as-judge metric from the ' +
+      '<a href="https://github.com/confident-ai/deepeval" target="_blank" rel="noopener">deepeval</a> library: ' +
+      'a model scores each arm’s answer on its own, from 0 to 1, against the task rubric. ' +
+      'Unlike the <b>blind A/B judge</b> above (which pits two answers head-to-head), G-Eval is an ' +
+      '<b>absolute</b> score — a useful sanity cross-check, but it saturates near 1.0 and won’t catch fine gaps.</div>';
     var inner = "";
     if (de && de.available === false) {
-      inner += '<div class="fallback">deepeval was unavailable for this run' +
+      inner += '<div class="fallback">G-Eval was not run for this evaluation' +
                (de.reason ? " — " + esc(de.reason) : "") + ".</div>";
     } else if (de) {
       var means = de.arm_means || {};
       var rows = Object.keys(means).map(function (k) {
         return "<tr><td>" + esc(k) + '</td><td class="num">' + fmt(means[k], 3) + "</td></tr>";
       }).join("");
-      if (rows) inner += '<table class="dtable"><tr><th>arm</th><th class="num">GEval mean (0–1)</th></tr>' + rows + "</table>";
+      if (rows) inner += '<table class="dtable"><tr><th>arm</th><th class="num">G-Eval mean (0–1, higher is better)</th></tr>' + rows + "</table>";
       if (isNum(de.delta_vs_baseline)) {
         inner += '<div class="setup-note">Δ vs baseline: <b class="num">' + fmtDelta(de.delta_vs_baseline, 3) +
-                 "</b> — GEval is an absolute cross-check; it saturates and won't catch fine pairwise gaps.</div>";
+                 "</b> — positive means the skill arm scored higher than the no-skill baseline.</div>";
       }
     }
-    return panel("deepeval (GEval)", inner + raw);
+    return panel("Quality cross-check · G-Eval", intro + inner + raw, null,
+                 "deepeval’s LLM-as-judge rubric score, 0–1");
   }
 
   function caseFor(run, t, idx) {
@@ -666,7 +707,7 @@ window.__SKILL_EVAL_DATA__ = null /*__SKILL_EVAL_DATA__*/;
                  esc(t.title || "") + "</div>";
       var sub = [];
       if (t.winner) {
-        sub.push((combo ? "combo vs none: " : "winner: ") + '<b class="' + winnerClass(t.winner) + '">' +
+        sub.push((combo ? "combo vs baseline — won by: " : "winner: ") + '<b class="' + winnerClass(t.winner) + '">' +
                  esc(t.winner) + "</b>" + (t.margin ? " (" + esc(t.margin) + ")" : ""));
       }
       var sc = t.scores || {};
@@ -680,7 +721,7 @@ window.__SKILL_EVAL_DATA__ = null /*__SKILL_EVAL_DATA__*/;
       }
       var ge = t.deepeval || {};
       var geTxt = Object.keys(ge).map(function (k) { return esc(k) + " " + fmt(ge[k], 2); }).join(" · ");
-      if (geTxt) sub.push("GEval: " + geTxt);
+      if (geTxt) sub.push('<abbr title="G-Eval (deepeval): an LLM judge scores each arm’s answer 0–1 against the task rubric — higher is better">G-Eval</abbr>: ' + geTxt);
       var c = caseFor(run, t, i);
       var body = c ? compareBlock(run, c)
         : '<p class="fallback">Verbatim outputs aren\u2019t embedded — no <code>' + esc(run.id) +

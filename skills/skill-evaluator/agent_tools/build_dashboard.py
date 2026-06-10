@@ -252,8 +252,14 @@ def validate_summary(d) -> "tuple[list[str], list[str]]":
 
     if not isinstance(d.get("date"), str):
         warnings.append("date missing — run sorts to the bottom of 'newest first'")
-    if not isinstance(d.get("quality"), dict):
+    quality = d.get("quality")
+    if not isinstance(quality, dict):
         warnings.append("quality missing — the quality column shows '—'")
+    elif kind == "combination" and not isinstance(quality.get("combo_vs_none"), dict):
+        warnings.append(
+            "combination quality without 'combo_vs_none' — the decisive combo-vs-"
+            "baseline cell shows '—' on the card and detail"
+        )
     if kind == "combination" and not isinstance(d.get("interaction"), dict):
         warnings.append("combination run without an 'interaction' block")
     return errors, warnings
@@ -272,7 +278,10 @@ def collect(reports_dir: Path) -> "tuple[list[dict], list[str], int]":
     seen_ids: dict[str, str] = {}
     for path in sorted(reports_dir.glob(SUMMARY_GLOB)):
         try:
-            data = json.loads(path.read_text(encoding="utf-8"))
+            # utf-8-sig: tolerate a leading BOM (Windows editors / PowerShell
+            # Out-File add one) — plain utf-8 would choke on it and silently
+            # drop the summary, building an empty dashboard despite valid data.
+            data = json.loads(path.read_text(encoding="utf-8-sig"))
         except (OSError, json.JSONDecodeError) as e:
             problems.append(f"ERROR {path.name}: unreadable JSON ({e})")
             bad_files += 1
@@ -329,7 +338,7 @@ def attach_artifacts(run: dict, reports_dir: Path) -> "list[str]":
                 )
                 continue
             detail[ARTIFACT_DETAIL_KEYS[fkey]] = json.loads(
-                path.read_text(encoding="utf-8")
+                path.read_text(encoding="utf-8-sig")  # tolerate a leading BOM
             )
         except (OSError, json.JSONDecodeError) as e:
             warns.append(
@@ -352,7 +361,7 @@ def build_index(runs: "list[dict]") -> dict:
 
 
 def render_dashboard(index: dict, template_path: Path) -> str:
-    template = template_path.read_text(encoding="utf-8")
+    template = template_path.read_text(encoding="utf-8-sig")  # tolerate a BOM
     if DATA_TOKEN not in template:
         raise ValueError(
             f"template {template_path} has no '{DATA_TOKEN}' injection token — "

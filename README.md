@@ -28,6 +28,10 @@ and three small local scripts. Drop it into **any** project, or install it as a 
 > double-clicking the file — it is your skill portfolio's governance view.
 > See [Skill Harness Dashboard](#skill-harness-dashboard-governance-view).
 
+[![The Skill Harness Dashboard — every evaluation as a clickable report card, with a portfolio KPI strip on top](docs/images/dashboard-overview.png)](reports/dashboard.html)
+
+<sub>The **Skill Harness Dashboard** (`reports/dashboard.html`) — your whole `reports/` directory at a glance. Click any card to open its full detail page. ([how to read it →](#reading-the-dashboard-visual-guide))</sub>
+
 ```
 You:    Evaluate skills ./caveman and ./code-map combined
 Claude: → 2×2 factorial arms: none / caveman / code-map / both
@@ -277,6 +281,55 @@ or re-run**:
 - **search, filters** (single vs combination; verdict buckets) and **sorting**
   (newest, biggest cost savings, best quality delta, name), a light/dark theme,
   and a print stylesheet for review meetings.
+
+### Reading the dashboard (visual guide)
+
+You make three reads, zooming in as you go: the **portfolio** (the card grid),
+one run's **numbers** (its detail page), then the **raw evidence** (the verbatim
+outputs). Here is what to look at in each.
+
+**1. The portfolio — scan the cards.** The screenshot above is the whole view.
+Read it like this:
+
+- **Color first.** Each card has a verdict-colored left edge and badge — green
+  *helps/synergistic*, grey *neutral/additive*, amber *mixed/redundant*, red
+  *risk/conflicting*. The **KPI strip** up top is the portfolio summary: the
+  **verdict-mix bar** (how green vs. red your harness is), the **median cost Δ**,
+  and the **⚑ quality-flag count**.
+- **Then the three numbers on each card** — cost-weighted **Δ%** (green =
+  cheaper), the **primary-axis Δ%** on the skill's billing mechanism (or *no
+  token claim*), and the decisive blind-judge **W·T·L**.
+- **Watch for the ⚑ flag on a green card.** That is the trap this tool exists to
+  catch: a *token win with a quality regression* (the baseline beat the skill on
+  the blind judge). Open that card before adopting.
+
+**2. One run — read the numbers.** Click a card to open its detail page:
+
+[![A run's detail page — verdict and recommendation, cost-per-arm bars, and the G-Eval quality cross-check](docs/images/dashboard-detail.png)](reports/dashboard.html)
+
+- The **verdict + recommendation** is the headline call.
+- **Cost per arm** bars are the money shot: a shorter **WITH** bar than
+  **WITHOUT** means the skill is cheaper; the **breakeven** note says how many
+  turns it takes to repay the skill's one-time context cost.
+- **Blind judge W·T·L** is the decisive quality comparison; **G-Eval** is an
+  absolute 0–1 sanity cross-check (it saturates near 1.0, so trust the blind A/B
+  for fine gaps).
+
+**3. The evidence — eyeball WITH vs WITHOUT.** Scroll the detail page to the
+per-task outputs and judge the difference yourself:
+
+[![Per task, the verbatim WITH-skill and WITHOUT-skill outputs shown side by side, under the judge's winner and scores](docs/images/dashboard-outputs.png)](reports/dashboard.html)
+
+The two panes are the **verbatim** model responses — **WITH** the skill on the
+left, **WITHOUT** on the right — pulled straight from the session transcript,
+with the judge's winner and scores sitting right above them. This is the audit
+trail: if a number or a verdict surprises you, read the two answers side by side
+and confirm the call with your own eyes.
+
+> The dashboard ships a **light and a dark theme** (toggle in the top-right,
+> remembered per browser). Screenshots here use the light theme; see
+> [`docs/dashboard.md`](docs/dashboard.md#the-ui) for the dark variant and a
+> field-by-field tour.
 
 Regenerate it any time (stdlib-only, offline):
 

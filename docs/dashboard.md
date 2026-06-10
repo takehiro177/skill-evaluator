@@ -205,6 +205,11 @@ per-run `_detail` key** carrying the artifact JSON for the detail views —
 
 ## The UI
 
+The whole page is the screenshot below — masthead, KPI strip, toolbar, and the
+card grid. Each card is a clickable link into its own detail page.
+
+[![Skill Harness Dashboard — KPI strip over a grid of clickable verdict-colored report cards](images/dashboard-overview.png)](../reports/dashboard.html)
+
 **Masthead & KPI strip.** Generation timestamp + schema version; then the
 portfolio at a glance — evaluations on file, distinct skills covered, the
 **verdict mix** as a proportional color bar with per-bucket counts, the
@@ -236,6 +241,8 @@ the whole card is a link into its detail page:
 
 Everything else lives in the detail page, keeping the list scannable.
 
+[![A detail page — verdict and recommendation, a stat row, cost-per-arm bars with the breakeven note, and the G-Eval quality cross-check](images/dashboard-detail.png)](../reports/dashboard.html)
+
 **The detail page (click a card).** Routing is in-page via the URL hash
 (`#run/<id>`), so the browser's back button works and a detail page can be
 deep-linked or bookmarked — still one static file, no server. It shows the
@@ -262,6 +269,12 @@ full record for the run:
   records, deepeval, interaction, and judge-verdict files (relative paths —
   they open locally and on GitHub).
 
+[![Per-task panel — the judge's winner and scores above the verbatim WITH-skill (left) and WITHOUT-skill (right) outputs, side by side](images/dashboard-outputs.png)](../reports/dashboard.html)
+
+<sub>The core of the detail page: read **WITH** (left) against **WITHOUT**
+(right) and judge the difference yourself. The text is the verbatim transcript
+output, with the blind judge's verdict sitting directly above each pair.</sub>
+
 **Where the verbatim outputs come from.** The builder embeds each run's
 sibling JSON artifacts (`<id>.deepeval.cases.json`, `<id>.deepeval.json`,
 `<id>.interaction.json`, `<id>.judge.verdicts.json`, or the paths in `files`)
@@ -278,6 +291,10 @@ theme via the toggle (persisted in `localStorage`, honoring
 chrome, expands the output panes, and keeps cards unbroken — print a detail
 page for a review meeting. Filter chips expose `aria-pressed`; focus states
 are visible.
+
+[![The same dashboard in its dark theme](images/dashboard-overview-dark.png)](../reports/dashboard.html)
+
+<sub>The dark theme — toggle with the ☾/☀ button in the masthead.</sub>
 
 ## Governance workflows
 
