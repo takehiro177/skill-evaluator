@@ -1,7 +1,7 @@
 {
   "name": "skill-evaluator",
-  "version": "0.3.0",
-  "description": "Cost-weighted A/B performance testing for Claude Code skills — and the interaction (synergy / redundancy / conflict) when skills are combined. Blind-judged quality + transcript-sourced token economics, entirely in-chat. (Not a static linter/security scanner.)",
+  "version": "0.4.0",
+  "description": "Cost-weighted A/B performance testing for Claude Code skills — one skill, or several combined with interaction (synergy/redundancy/conflict) analysis. Blind LLM-as-judge quality scoring, transcript-sourced token economics, required deepeval cross-check, and a zero-dependency Skill Harness Dashboard: every run also writes a versioned summary.json and refreshes a self-contained reports/dashboard.html governance view (open from file://, no server).",
   "author": {
     "name": "Takehiro Ohashi",
     "url": "https://github.com/takehiro177"
@@ -18,6 +18,8 @@
     "ab-testing",
     "cost-weighted-tokens",
     "blind-judge",
-    "deepeval"
+    "deepeval",
+    "dashboard",
+    "governance"
   ]
 }

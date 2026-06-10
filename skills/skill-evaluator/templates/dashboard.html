@@ -1,0 +1,873 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Skill Harness Dashboard · skill-evaluator</title>
+<style>
+/* ------------------------------------------------------------------ tokens
+   Plain, modern, flat. One accent, neutral surfaces, no ornament — the
+   verdict colors carry the meaning. Zero dependencies by design (opens from
+   file://), so the type is the system stack. */
+:root{
+  --bg:#f6f7f9;
+  --panel:#ffffff;
+  --code:#f8fafc;
+  --ink:#0f172a;
+  --muted:#5b6776;
+  --faint:#94a0ae;
+  --border:#e4e7ec;
+  --border-strong:#cfd5dd;
+  --accent:#4f46e5;
+  --accent-soft:#eef2ff;
+  --good:#0a7d52;
+  --warn:#9a5b00;
+  --bad:#c2362f;
+  --neutral:#5f6b7a;
+  --track:#edeff3;
+  --shadow:0 1px 2px rgba(15,23,42,.05);
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Cascadia Mono","Liberation Mono",monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+}
+[data-theme="dark"]{
+  --bg:#101216;
+  --panel:#17191f;
+  --code:#0d0f13;
+  --ink:#e7eaf0;
+  --muted:#9aa3b1;
+  --faint:#6b7686;
+  --border:#262a32;
+  --border-strong:#39404b;
+  --accent:#8b93f8;
+  --accent-soft:rgba(139,147,248,.14);
+  --good:#3fc48f;
+  --warn:#e0a93e;
+  --bad:#ef7a72;
+  --neutral:#94a0ae;
+  --track:#23262d;
+  --shadow:0 1px 2px rgba(0,0,0,.35);
+}
+/* ------------------------------------------------------------------- base */
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--sans);-webkit-font-smoothing:antialiased}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+.container{max-width:1180px;margin:0 auto;padding:0 22px}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.lbl{font:600 10.5px/1.3 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--faint)}
+.pos{color:var(--good)} .neg{color:var(--bad)} .dim{color:var(--muted)}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+
+/* ----------------------------------------------------------------- topbar */
+.topbar{position:sticky;top:0;z-index:20;background:var(--panel);border-bottom:1px solid var(--border)}
+.topbar-row{display:flex;align-items:center;gap:10px;padding:12px 0}
+.wordmark{font:650 14px/1.2 var(--sans)}
+.wordmark small{color:var(--muted);font-weight:500;margin-left:8px}
+.topbar .right{margin-left:auto;display:flex;align-items:center;gap:12px}
+#genMeta{font:11.5px var(--mono);color:var(--faint);font-variant-numeric:tabular-nums}
+.theme-btn{
+  width:32px;height:32px;border-radius:8px;border:1px solid var(--border);
+  display:inline-flex;align-items:center;justify-content:center;font-size:14px;color:var(--muted);
+}
+.theme-btn:hover{color:var(--ink);border-color:var(--border-strong)}
+
+/* ------------------------------------------------------------------- hero */
+.hero{padding:30px 0 4px}
+.hero h1{margin:0;font:700 23px/1.2 var(--sans);letter-spacing:-.015em}
+.hero p{margin:8px 0 0;color:var(--muted);font-size:13.5px;max-width:76ch}
+
+/* ------------------------------------------------------------------- KPIs */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:10px;padding:18px 0 4px}
+.kpi{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:13px 15px}
+.kpi .v{font:650 24px/1.15 var(--mono);font-variant-numeric:tabular-nums;margin-top:6px;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.kpi .v small{font:500 11.5px var(--sans);color:var(--faint)}
+.kpi .v .flagged{color:var(--warn)}
+.kpi.wide{grid-column:span 2}
+@media (max-width:620px){.kpi.wide{grid-column:span 1}}
+.spectrum{display:flex;height:8px;border-radius:999px;overflow:hidden;background:var(--track);margin-top:12px}
+.spectrum span{height:100%}
+.spectrum .sg{background:var(--good)} .spectrum .sn{background:var(--neutral)}
+.spectrum .sw{background:var(--warn)} .spectrum .sb{background:var(--bad)}
+.legend{display:flex;gap:4px 14px;flex-wrap:wrap;margin-top:8px;font:600 11px/1.4 var(--mono);font-variant-numeric:tabular-nums;color:var(--muted)}
+.legend i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px}
+.legend .lg i{background:var(--good)} .legend .ln i{background:var(--neutral)}
+.legend .lw i{background:var(--warn)} .legend .lb i{background:var(--bad)}
+
+/* ---------------------------------------------------------------- toolbar */
+.toolbar{display:flex;flex-wrap:wrap;gap:9px;align-items:center;padding:14px 0 2px}
+.search{
+  flex:1 1 230px;max-width:340px;background:var(--panel);border:1px solid var(--border);
+  border-radius:8px;padding:8px 12px;color:var(--ink);font:13.5px var(--sans);
+}
+.search::placeholder{color:var(--faint)}
+.seg{display:inline-flex;gap:2px;background:var(--track);border:1px solid var(--border);border-radius:9px;padding:2px}
+.seg button{border-radius:7px;padding:6px 13px;font:600 12.5px var(--sans);color:var(--muted)}
+.seg button:hover{color:var(--ink)}
+.seg button[aria-pressed="true"]{color:var(--ink);background:var(--panel);box-shadow:var(--shadow)}
+.chiprow{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.chip{
+  display:inline-flex;align-items:center;gap:7px;border:1px solid var(--border);border-radius:999px;
+  padding:6.5px 12px;background:var(--panel);font:600 12px/1 var(--sans);color:var(--muted);
+}
+.chip:hover{border-color:var(--border-strong);color:var(--ink)}
+.vdot{width:8px;height:8px;border-radius:50%;flex:none}
+.chip.fgood .vdot{background:var(--good)} .chip.fneutral .vdot{background:var(--neutral)}
+.chip.fwarn .vdot{background:var(--warn)} .chip.fbad .vdot{background:var(--bad)}
+.chip[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--ink)}
+.sortwrap{margin-left:auto;display:flex;align-items:center;gap:8px}
+select{background:var(--panel);border:1px solid var(--border);border-radius:8px;color:var(--ink);font:13px var(--sans);padding:7px 10px}
+.count-line{padding:6px 0 12px;color:var(--faint);font:12px var(--mono);font-variant-numeric:tabular-nums}
+
+/* ------------------------------------------------------------- list cards */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:12px;padding:2px 0 48px}
+@media (max-width:400px){.grid{grid-template-columns:1fr}}
+.card{
+  --vc:var(--neutral);
+  display:flex;flex-direction:column;gap:11px;color:var(--ink);
+  background:var(--panel);border:1px solid var(--border);border-left:3px solid var(--vc);
+  border-radius:10px;padding:15px 16px 12px;
+  transition:border-color .12s ease,background-color .12s ease;
+}
+.card:hover{text-decoration:none;border-color:var(--border-strong);border-left-color:var(--vc)}
+.card:hover .go{color:var(--accent)}
+.card.good{--vc:var(--good)} .card.warn{--vc:var(--warn)}
+.card.bad{--vc:var(--bad)} .card.neutral{--vc:var(--neutral)}
+.card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.card-top h2{margin:0;font:650 15.5px/1.35 var(--sans);letter-spacing:-.01em;min-width:0;overflow-wrap:anywhere}
+.card-top h2 .plus{color:var(--muted);font-weight:500}
+.badge{
+  display:inline-flex;align-items:center;gap:7px;flex:none;padding:4.5px 10px;border-radius:999px;
+  font:650 10px/1.2 var(--mono);letter-spacing:.09em;text-transform:uppercase;color:var(--vc);
+  background:color-mix(in srgb, var(--vc) 10%, transparent);
+  border:1px solid color-mix(in srgb, var(--vc) 32%, transparent);white-space:nowrap;
+}
+.badge .dot{width:6px;height:6px;border-radius:50%;background:var(--vc);flex:none}
+.stats{display:flex;gap:8px 22px;flex-wrap:wrap}
+.stat .sv{display:block;font:650 16px/1.2 var(--mono);font-variant-numeric:tabular-nums;margin-top:3px}
+.stat .sv.small{font-size:13px}
+.qline .w{color:var(--good)} .qline .l{color:var(--bad)} .qline .t{color:var(--muted)}
+.card-meta{
+  display:flex;flex-wrap:wrap;gap:3px 10px;align-items:center;border-top:1px solid var(--border);
+  padding-top:9px;margin-top:auto;font:11.5px var(--mono);color:var(--faint);font-variant-numeric:tabular-nums;
+}
+.card-meta .sep{opacity:.5}
+.card-meta .flag{color:var(--warn)}
+.card-meta .go{margin-left:auto;color:var(--faint);font:600 11.5px var(--sans)}
+
+/* ------------------------------------------------------------ detail view */
+.detail{padding:16px 0 64px}
+.back{display:inline-block;font:600 13px var(--sans);margin:6px 0 14px}
+.dhead{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap}
+.dhead h1{margin:0;font:700 21px/1.25 var(--sans);letter-spacing:-.015em}
+.dhead h1 .plus{color:var(--muted);font-weight:500}
+.tagrow{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.tag{font:600 10.5px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);
+  border:1px solid var(--border);border-radius:6px;padding:4.5px 7px;background:var(--panel)}
+.tag.kind{color:var(--accent);border-color:color-mix(in srgb, var(--accent) 40%, transparent);background:var(--accent-soft)}
+.dmeta{margin-top:10px;font:12px var(--mono);color:var(--faint);font-variant-numeric:tabular-nums}
+.dmeta .sep{opacity:.5;margin:0 6px}
+.dmeta .flag{color:var(--warn)}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:17px 19px;margin-top:14px}
+.panel h3{margin:0 0 13px;font:650 13px/1.3 var(--sans);letter-spacing:.01em}
+.panel h3 small{color:var(--faint);font:500 11.5px var(--sans);margin-left:8px}
+.panel.verdict{border-left:3px solid var(--vc)}
+.reco{font-size:13.5px;line-height:1.6}
+.reco + .reco{margin-top:11px}
+.reco .lbl{display:block;margin-bottom:4px}
+.statrow{display:flex;gap:10px 34px;flex-wrap:wrap}
+.statrow .sv{display:block;font:650 21px/1.2 var(--mono);font-variant-numeric:tabular-nums;margin-top:4px}
+.statrow .sub{font:11px var(--mono);color:var(--faint);margin-top:3px}
+.qline{font:650 14px/1.5 var(--mono);font-variant-numeric:tabular-nums}
+
+.bar-row{display:grid;grid-template-columns:110px 1fr 90px;gap:10px;align-items:center;margin-top:7px}
+.bar-name{font:600 10.5px/1.2 var(--mono);letter-spacing:.05em;color:var(--muted);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-transform:uppercase}
+.bar-track{height:9px;background:var(--track);border-radius:999px;overflow:hidden}
+.bar-fill{height:100%;border-radius:999px}
+.bar-fill.base{background:var(--border-strong)}
+.bar-fill.single{background:color-mix(in srgb, var(--accent) 55%, var(--border-strong))}
+.bar-fill.full{background:var(--accent)}
+.bar-val{font:600 11.5px/1 var(--mono);font-variant-numeric:tabular-nums;text-align:right}
+.setup-note{margin-top:12px;font:12.5px/1.5 var(--sans);color:var(--muted)}
+.interaction-line{font:13px/1.6 var(--sans);color:var(--muted)}
+.interaction-line b{color:var(--ink);font-weight:650}
+
+.dtable{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:6px}
+.dtable th{text-align:left;font:650 9.5px/1.2 var(--mono);letter-spacing:.1em;text-transform:uppercase;
+  color:var(--faint);border-bottom:1px solid var(--border-strong);padding:4px 8px 7px 0}
+.dtable td{border-bottom:1px solid var(--border);padding:7px 8px 7px 0;vertical-align:top}
+.dtable td.num,.dtable th.num{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+.win-base{color:var(--bad);font-weight:650}
+.win-arm{color:var(--good);font-weight:650}
+.win-tie{color:var(--muted)}
+
+.task{border-top:1px solid var(--border);padding-top:16px;margin-top:16px}
+.task:first-of-type{border-top:0;padding-top:2px;margin-top:2px}
+.task-head{font:650 14px/1.45 var(--sans)}
+.task-head .tid{font:650 12px var(--mono);color:var(--accent);margin-right:7px}
+.task-sub{margin-top:5px;font:12.5px/1.6 var(--sans);color:var(--muted)}
+.task-sub b{color:var(--ink);font-weight:650}
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:11px}
+@media (max-width:760px){.compare{grid-template-columns:1fr}}
+.colhead{margin-bottom:6px}
+.armpill{display:inline-block;font:650 10px/1.2 var(--mono);letter-spacing:.09em;text-transform:uppercase;
+  padding:4px 9px;border-radius:999px}
+.armpill.with{color:var(--accent);background:var(--accent-soft);border:1px solid color-mix(in srgb, var(--accent) 35%, transparent)}
+.armpill.base{color:var(--muted);background:var(--track);border:1px solid var(--border)}
+pre.out{
+  margin:0;background:var(--code);border:1px solid var(--border);border-radius:9px;
+  padding:11px 13px;font:12px/1.6 var(--mono);white-space:pre-wrap;word-break:break-word;
+  max-height:420px;overflow:auto;color:var(--ink);
+}
+pre.out.small{max-height:300px;font-size:11.5px}
+details.fold{margin-top:9px}
+details.fold>summary{cursor:pointer;font:600 12px var(--sans);color:var(--muted);list-style:none}
+details.fold>summary::-webkit-details-marker{display:none}
+details.fold>summary::before{content:"▸ ";color:var(--accent)}
+details.fold[open]>summary::before{content:"▾ "}
+details.fold>summary:hover{color:var(--ink)}
+details.fold>.fold-body{margin-top:8px}
+.fallback{margin:10px 0 0;font:12.5px/1.6 var(--sans);color:var(--muted)}
+.cavlist{margin:0;padding-left:18px;color:var(--muted);font-size:13px}
+.cavlist li{margin:4px 0}
+.files{display:flex;gap:6px 18px;flex-wrap:wrap;font:13px var(--sans)}
+
+/* --------------------------------------------------------- empty & footer */
+.empty{padding:54px 0 80px;display:flex;justify-content:center}
+.empty-box{max-width:560px;text-align:center;color:var(--muted);background:var(--panel);
+  border:1px solid var(--border);border-radius:12px;padding:36px 34px}
+.empty h2{font:650 18px/1.3 var(--sans);color:var(--ink);margin:0 0 8px}
+.empty p{margin:7px 0;font-size:13.5px}
+.empty code,.foot code{font-family:var(--mono);font-size:12px;background:var(--code);
+  border:1px solid var(--border);border-radius:6px;padding:2px 7px;color:var(--ink)}
+.foot{border-top:1px solid var(--border);margin-top:8px;padding:16px 0 40px;
+  color:var(--faint);font-size:12.5px;display:flex;flex-wrap:wrap;gap:6px 18px}
+.foot .right{margin-left:auto}
+
+@media print{
+  :root,[data-theme="dark"]{--bg:#fff;--panel:#fff;--code:#fafafa;--ink:#111;--muted:#444;--faint:#666;
+    --border:#ccc;--border-strong:#aaa;--track:#eee;--shadow:none;--accent:#333;--accent-soft:#f2f2f2}
+  .topbar,.toolbar,.count-line,.back,.foot .right{display:none}
+  .card,.panel{break-inside:avoid}
+  pre.out{max-height:none}
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-row container">
+    <span class="wordmark">skill-evaluator <small>Skill Harness Dashboard</small></span>
+    <span class="right">
+      <span id="genMeta"></span>
+      <button class="theme-btn" id="themeBtn" type="button" aria-label="Switch color theme">☾</button>
+    </span>
+  </div>
+</header>
+
+<div id="listView">
+  <section class="hero container">
+    <h1>Skill Harness Dashboard</h1>
+    <p>Every <a href="https://github.com/takehiro177/skill-evaluator">skill-evaluator</a> run as a report card — blind A/B, transcript-sourced, cost-weighted. Click a card for the full detail: judge verdicts, deepeval results, and the verbatim WITH/WITHOUT outputs.</p>
+  </section>
+
+  <section class="kpis container" id="kpis" hidden></section>
+
+  <section class="toolbar container" id="toolbar" hidden>
+    <input class="search" id="q" type="search" placeholder="Search skill or run id…" aria-label="Search runs">
+    <div class="seg" role="group" aria-label="Mode filter">
+      <button data-kind="all" aria-pressed="true" type="button">All</button>
+      <button data-kind="single" aria-pressed="false" type="button">Single</button>
+      <button data-kind="combination" aria-pressed="false" type="button">Combination</button>
+    </div>
+    <div class="chiprow" role="group" aria-label="Verdict filter">
+      <button class="chip fgood" data-bucket="good" aria-pressed="false" type="button"><span class="vdot"></span>Helps</button>
+      <button class="chip fneutral" data-bucket="neutral" aria-pressed="false" type="button"><span class="vdot"></span>Neutral</button>
+      <button class="chip fwarn" data-bucket="warn" aria-pressed="false" type="button"><span class="vdot"></span>Mixed</button>
+      <button class="chip fbad" data-bucket="bad" aria-pressed="false" type="button"><span class="vdot"></span>Risk</button>
+    </div>
+    <div class="sortwrap">
+      <label class="lbl" for="sort">sort</label>
+      <select id="sort">
+        <option value="date">Newest first</option>
+        <option value="savings">Biggest cost savings</option>
+        <option value="quality">Best quality delta</option>
+        <option value="name">Name A→Z</option>
+      </select>
+    </div>
+  </section>
+  <div class="container count-line" id="countLine" hidden></div>
+
+  <main class="grid container" id="grid"></main>
+
+  <div class="empty container" id="empty" hidden>
+    <div class="empty-box">
+      <h2>The data layer is empty</h2>
+      <p>Run an evaluation in Claude Code — <code>Evaluate the skill at ./examples/caveman</code> — and the workflow writes a <code>&lt;name&gt;-eval-&lt;n&gt;.summary.json</code> next to each report, then rebuilds this page.</p>
+      <p>To rebuild by hand: <code>python skills/skill-evaluator/agent_tools/build_dashboard.py</code></p>
+    </div>
+  </div>
+</div>
+
+<section class="detail container" id="detail" hidden></section>
+
+<footer class="foot container">
+  <span>skill-evaluator · Skill Harness Dashboard · MIT</span>
+  <span class="right">Regenerate: <code>python …/agent_tools/build_dashboard.py</code> — never edit this file by hand.</span>
+</footer>
+
+<script>
+window.__SKILL_EVAL_DATA__ = null /*__SKILL_EVAL_DATA__*/;
+(function () {
+  "use strict";
+
+  /* ------------------------------------------------------------ utilities */
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  function isNum(x) { return typeof x === "number" && isFinite(x); }
+  function fmt(n, d) {
+    if (!isNum(n)) return "—";
+    var dd = d == null ? (Math.abs(n) < 100 && n % 1 !== 0 ? 1 : 0) : d;
+    return n.toLocaleString("en-US", { minimumFractionDigits: dd, maximumFractionDigits: dd });
+  }
+  function fmtPct(p) {
+    if (!isNum(p)) return "—";
+    return (p > 0 ? "+" : p < 0 ? "−" : "") + fmt(Math.abs(p), 1) + "%";
+  }
+  function fmtDelta(n, d) {
+    if (!isNum(n)) return "—";
+    return (n > 0 ? "+" : n < 0 ? "−" : "±") + fmt(Math.abs(n), d == null ? 1 : d);
+  }
+
+  var BUCKETS = {
+    good: ["helps", "synergistic", "synergy"],
+    neutral: ["additive", "none", "no-effect", "no-token-claim"],
+    warn: ["mixed", "mixed-favorable", "mixed-unfavorable", "redundant", "sub-additive"],
+    bad: ["hurts", "conflicting", "antagonistic", "costs-more", "regression"]
+  };
+  function bucketOf(run) {
+    var label = ((run.verdict || {}).label || "").toLowerCase();
+    for (var b in BUCKETS) {
+      for (var i = 0; i < BUCKETS[b].length; i++) {
+        if (label.indexOf(BUCKETS[b][i]) === 0) return b;
+      }
+    }
+    return "neutral";
+  }
+
+  function decisiveQuality(run) {
+    var q = run.quality || {};
+    return run.kind === "combination" ? q.combo_vs_none : q.pairwise;
+  }
+  function qualityFlagged(run) {
+    var d = decisiveQuality(run) || {};
+    return isNum(d.losses) && isNum(d.wins) && d.losses > d.wins;
+  }
+  function qScore(run) {
+    var q = run.quality || {};
+    if (q.deepeval && isNum(q.deepeval.delta_vs_baseline)) return q.deepeval.delta_vs_baseline;
+    var d = decisiveQuality(run) || {};
+    if (isNum(d.mean_delta)) return d.mean_delta / 10;
+    if (isNum(d.wins) && isNum(d.losses)) return (d.wins - d.losses) / Math.max(1, (d.wins + d.losses + (d.ties || 0)));
+    return 0;
+  }
+  function costDelta(run) {
+    var h = ((run.metrics || {}).headline || {});
+    return isNum(h.cost_delta_pct) ? h.cost_delta_pct : null;
+  }
+  function skillNames(run) { return (run.skills || []).map(function (s) { return s.name; }); }
+  function armRole(run, arm) {
+    var n = (arm.skills || []).length, total = (run.skills || []).length;
+    if (n === 0) return "base";
+    if (total > 0 && n >= total) return "full";
+    return "single";
+  }
+  function titleOf(run) {
+    var names = skillNames(run);
+    return names.map(esc).join(' <span class="plus">+</span> ') || esc(run.id);
+  }
+  function wtlInline(d) {
+    if (!d || !isNum(d.wins)) return "—";
+    return '<span class="w">' + d.wins + "W</span>·<span class=\"t\">" + (d.ties || 0) +
+           'T</span>·<span class="l">' + d.losses + "L</span>";
+  }
+  function badge(run, b) {
+    var v = run.verdict || {};
+    var txt = esc(v.label || b).replace(/-/g, " ");
+    return '<span class="badge"><span class="dot"></span>' +
+           (v.emoji ? esc(v.emoji) + " " : "") + txt + "</span>";
+  }
+  function tone(v) { return !isNum(v) ? "dim" : v < 0 ? "pos" : v > 0 ? "neg" : "dim"; }
+  function runHref(run) { return "#run/" + esc(encodeURIComponent(String(run.id))); }
+
+  /* ------------------------------------------------------------ list card */
+  function card(run) {
+    var b = bucketOf(run);
+    var h = ((run.metrics || {}).headline || {});
+    var cd = h.cost_delta_pct, pd = h.primary_delta_pct;
+    var primary = isNum(pd)
+      ? '<span class="sv num ' + tone(pd) + '">' + fmtPct(pd) + "</span>"
+      : '<span class="sv small dim">no token claim</span>';
+    var primaryLbl = isNum(pd) ? esc(h.primary_label || "primary axis") : "mechanism";
+    var d = decisiveQuality(run);
+    return '<a class="card ' + b + '" href="' + runHref(run) + '">' +
+      '<div class="card-top"><h2>' + titleOf(run) + "</h2>" + badge(run, b) + "</div>" +
+      '<div class="stats">' +
+        '<div class="stat"><span class="lbl">cost Δ</span><span class="sv num ' + tone(cd) + '">' + fmtPct(cd) + "</span></div>" +
+        '<div class="stat"><span class="lbl">' + primaryLbl + "</span>" + primary + "</div>" +
+        '<div class="stat"><span class="lbl">quality</span><span class="sv small qline">' + wtlInline(d) + "</span></div>" +
+      "</div>" +
+      '<div class="card-meta"><span>' + esc(run.kind || "single") + '</span><span class="sep">·</span>' +
+        "<span>" + esc(run.date || "—") + '</span><span class="sep">·</span>' +
+        "<span>" + esc(run.tasks != null ? run.tasks : "?") + " tasks</span>" +
+        (qualityFlagged(run) ? '<span class="sep">·</span><span class="flag">⚑ quality</span>' : "") +
+        '<span class="go">View report →</span>' +
+      "</div></a>";
+  }
+
+  /* ------------------------------------------------------------- KPI strip */
+  function median(xs) {
+    if (!xs.length) return null;
+    var s = xs.slice().sort(function (a, b) { return a - b; });
+    var m = Math.floor(s.length / 2);
+    return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+  }
+  function renderKPIs(runs) {
+    var skills = {};
+    runs.forEach(function (r) { skillNames(r).forEach(function (n) { skills[n] = 1; }); });
+    var counts = { good: 0, neutral: 0, warn: 0, bad: 0 };
+    runs.forEach(function (r) { counts[bucketOf(r)]++; });
+    var deltas = runs.map(costDelta).filter(isNum);
+    var med = median(deltas);
+    var flags = runs.filter(qualityFlagged).length;
+    var segCls = { good: "sg", neutral: "sn", warn: "sw", bad: "sb" };
+    var spectrum = ["good", "neutral", "warn", "bad"].filter(function (k) { return counts[k] > 0; })
+      .map(function (k) { return '<span class="' + segCls[k] + '" style="flex:' + counts[k] + '"></span>'; }).join("");
+    var legend = '<div class="legend">' +
+      '<span class="lg"><i></i>' + counts.good + " helps</span>" +
+      '<span class="ln"><i></i>' + counts.neutral + " neutral</span>" +
+      '<span class="lw"><i></i>' + counts.warn + " mixed</span>" +
+      '<span class="lb"><i></i>' + counts.bad + " risk</span></div>";
+    var medCls = !isNum(med) ? "" : med < 0 ? "pos" : med > 0 ? "neg" : "";
+    document.getElementById("kpis").innerHTML =
+      '<div class="kpi"><span class="lbl">evaluations</span><div class="v">' + runs.length + "</div></div>" +
+      '<div class="kpi"><span class="lbl">skills covered</span><div class="v">' + Object.keys(skills).length + "</div></div>" +
+      '<div class="kpi wide"><span class="lbl">verdict mix</span>' +
+        (spectrum ? '<div class="spectrum">' + spectrum + "</div>" : "") + legend + "</div>" +
+      '<div class="kpi"><span class="lbl">median cost Δ</span><div class="v"><span class="' + medCls + '">' +
+        (med == null ? "—" : fmtPct(med)) + "</span><small>weighted, across runs</small></div></div>" +
+      '<div class="kpi"><span class="lbl">quality flags</span><div class="v"><span class="' +
+        (flags ? "flagged" : "") + '">' + (flags ? "⚑ " : "") + flags + "</span><small>baseline won</small></div></div>";
+  }
+
+  /* ----------------------------------------------------------- detail view */
+  function panel(title, inner, extraCls, sub) {
+    if (!inner) return "";
+    return '<section class="panel' + (extraCls ? " " + extraCls : "") + '">' +
+      (title ? "<h3>" + title + (sub ? "<small>" + sub + "</small>" : "") + "</h3>" : "") +
+      inner + "</section>";
+  }
+  function fold(label, inner, cls) {
+    if (!inner) return "";
+    return '<details class="fold"><summary>' + esc(label) + '</summary><div class="fold-body">' + inner + "</div></details>";
+  }
+  function rawBlock(name, obj) {
+    if (obj == null) return "";
+    var txt;
+    try { txt = JSON.stringify(obj, null, 2); } catch (e) { return ""; }
+    return fold("raw " + name, '<pre class="out small">' + esc(txt) + "</pre>");
+  }
+  function winnerClass(winner) {
+    if (!winner) return "";
+    var w = String(winner).toLowerCase();
+    if (w === "tie") return "win-tie";
+    return ["base", "baseline", "none", "without", "without_skill"].indexOf(w) >= 0 ? "win-base" : "win-arm";
+  }
+
+  function verdictPanel(run) {
+    var v = run.verdict || {};
+    var inner = "";
+    if (v.headline) inner += '<div class="reco"><span class="lbl">verdict</span>' + esc(v.headline) + "</div>";
+    if (v.bottom_line) inner += '<div class="reco"><span class="lbl">recommendation</span>' + esc(v.bottom_line) + "</div>";
+    return panel(null, inner, "verdict");
+  }
+
+  function statPanel(run) {
+    var h = ((run.metrics || {}).headline || {});
+    var cd = h.cost_delta_pct, pd = h.primary_delta_pct;
+    var q = run.quality || {}, de = q.deepeval || {};
+    var cells =
+      '<div class="stat"><span class="lbl">cost Δ (weighted)</span><span class="sv ' + tone(cd) + '">' + fmtPct(cd) +
+        '</span><div class="sub">eff. tokens vs baseline</div></div>' +
+      '<div class="stat"><span class="lbl">' + (isNum(pd) ? esc(h.primary_label || "primary axis") : "mechanism") + "</span>" +
+        (isNum(pd) ? '<span class="sv ' + tone(pd) + '">' + fmtPct(pd) + "</span>"
+                   : '<span class="sv dim" style="font-size:15px">no token claim</span><div class="sub">' +
+                     esc((run.metrics || {}).mechanism || "behavioral") + "</div>") + "</div>";
+    if (run.kind === "combination") {
+      var bs = q.combo_vs_best_single || {};
+      cells += '<div class="stat"><span class="lbl">combo vs none</span><span class="sv qline" style="font-size:17px">' +
+               wtlInline(q.combo_vs_none) + "</span></div>";
+      cells += '<div class="stat"><span class="lbl">vs best single' +
+               (bs.best_single ? " (" + esc(bs.best_single) + ")" : "") +
+               '</span><span class="sv qline" style="font-size:17px">' + wtlInline(bs) + "</span></div>";
+    } else {
+      var p = q.pairwise || {};
+      cells += '<div class="stat"><span class="lbl">blind judge</span><span class="sv qline" style="font-size:17px">' +
+               wtlInline(p) + "</span>" +
+               (isNum(p.mean_delta) ? '<div class="sub">mean Δ ' + fmtDelta(p.mean_delta) + "/10</div>" : "") + "</div>";
+    }
+    cells += '<div class="stat"><span class="lbl">GEval Δ</span><span class="sv ' +
+             (isNum(de.delta_vs_baseline) ? tone(-de.delta_vs_baseline) : "dim") + '" style="font-size:17px">' +
+             (de.available === false ? "n/a" : fmtDelta(de.delta_vs_baseline, 3)) + "</span></div>";
+    return panel(null, '<div class="statrow">' + cells + "</div>");
+  }
+
+  function costPanel(run) {
+    var arms = ((run.metrics || {}).arms || []).filter(function (a) { return a && a.name; });
+    if (!arms.length) return "";
+    var key = arms.some(function (a) { return isNum(a.cost_units); }) ? "cost_units" : "output_tokens";
+    var max = 0;
+    arms.forEach(function (a) { if (isNum(a[key])) max = Math.max(max, a[key]); });
+    if (!max) return "";
+    var rows = arms.map(function (a) {
+      var v = a[key];
+      var w = isNum(v) ? Math.max(2, (v / max) * 100) : 0;
+      return '<div class="bar-row"><span class="bar-name" title="' + esc(a.name) + '">' + esc(a.name) + "</span>" +
+        '<span class="bar-track"><span class="bar-fill ' + armRole(run, a) + '" style="width:' + w.toFixed(1) + '%"></span></span>' +
+        '<span class="bar-val">' + (isNum(v) ? fmt(v, 0) : "unmeasured") + "</span></div>";
+    }).join("");
+    var s = ((run.metrics || {}).setup) || null;
+    var setup = "";
+    if (s) {
+      var bits = [];
+      if (isNum(s.one_time_cost_units)) bits.push("one-time setup " + fmt(s.one_time_cost_units) + " eff-tok");
+      if (isNum(s.per_turn_saving_cost_units)) bits.push("saves ~" + fmt(s.per_turn_saving_cost_units) + " per turn");
+      if (isNum(s.breakeven_turns)) bits.push("breakeven ≈ " + fmt(s.breakeven_turns, 2) + " turns");
+      if (bits.length) setup = '<div class="setup-note">' + bits.join(" · ") + "</div>";
+    }
+    var unit = key === "cost_units" ? "effective tokens — lower is cheaper" : "output tokens — lower is cheaper";
+    return panel("Cost per arm", rows + setup, null, unit);
+  }
+
+  function interactionPanel(run) {
+    var it = run.interaction;
+    if (run.kind !== "combination" || !it) return "";
+    if (it.available === false) {
+      return panel("Interaction", '<div class="interaction-line">Not decomposed — ' +
+        esc(it.reason || "no single-skill arms in this design") + ".</div>");
+    }
+    var line = '<div class="interaction-line"><b>' + fmtDelta(it.value) + " eff-tok</b> vs additive prediction " +
+      fmt(it.additive_prediction) + " → <b>" + esc(it.classification || "?") + "</b>" +
+      (it.best_single ? " · best single: " + esc(it.best_single) +
+        (isNum(it.best_single_savings) ? " (" + fmt(it.best_single_savings) + ")" : "") : "") + "</div>";
+    var rows = [];
+    function row(k, v, strong) {
+      rows.push("<tr><td>" + (strong ? "<b>" + k + "</b>" : k) + '</td><td class="num">' +
+        (isNum(v) ? fmt(v) : esc(v == null ? "—" : v)) + "</td></tr>");
+    }
+    row("combined savings (combo vs base)", it.combined_savings, true);
+    var ie = it.individual_effects || {};
+    Object.keys(ie).forEach(function (k) { row("individual effect — " + esc(k), ie[k]); });
+    var me = it.marginal_effects || {};
+    Object.keys(me).forEach(function (k) { row("marginal — " + esc(k) + " (within stack)", me[k]); });
+    row("additive prediction", it.additive_prediction);
+    row("interaction (excess over additive)", it.value, true);
+    row("best single-skill savings", it.best_single_savings);
+    var table = '<table class="dtable"><tr><th>quantity</th><th class="num">value</th></tr>' + rows.join("") + "</table>";
+    var raw = rawBlock(esc(run.id) + ".interaction.json", (run._detail || {}).interaction);
+    return panel("Interaction", line + table + raw);
+  }
+
+  function deepevalPanel(run) {
+    var de = ((run.quality || {}).deepeval) || null;
+    var raw = rawBlock(esc(run.id) + ".deepeval.json", (run._detail || {}).deepeval);
+    if (!de && !raw) return "";
+    var inner = "";
+    if (de && de.available === false) {
+      inner += '<div class="fallback">deepeval was unavailable for this run' +
+               (de.reason ? " — " + esc(de.reason) : "") + ".</div>";
+    } else if (de) {
+      var means = de.arm_means || {};
+      var rows = Object.keys(means).map(function (k) {
+        return "<tr><td>" + esc(k) + '</td><td class="num">' + fmt(means[k], 3) + "</td></tr>";
+      }).join("");
+      if (rows) inner += '<table class="dtable"><tr><th>arm</th><th class="num">GEval mean (0–1)</th></tr>' + rows + "</table>";
+      if (isNum(de.delta_vs_baseline)) {
+        inner += '<div class="setup-note">Δ vs baseline: <b class="num">' + fmtDelta(de.delta_vs_baseline, 3) +
+                 "</b> — GEval is an absolute cross-check; it saturates and won't catch fine pairwise gaps.</div>";
+      }
+    }
+    return panel("deepeval (GEval)", inner + raw);
+  }
+
+  function caseFor(run, t, idx) {
+    var cs = ((run._detail || {}).cases);
+    if (!cs || !cs.length) return null;
+    for (var i = 0; i < cs.length; i++) {
+      if (cs[i] && String(cs[i].id) === String(t.id)) return cs[i];
+    }
+    return cs[idx] || null;
+  }
+  function col(label, cls, text) {
+    return '<div class="col"><div class="colhead"><span class="armpill ' + cls + '">' + esc(label) +
+           '</span></div><pre class="out">' + esc(text == null ? "" : String(text)) + "</pre></div>";
+  }
+  function compareBlock(run, c) {
+    if (!c) return "";
+    var pre = "";
+    if (c.input) pre += fold("Task prompt", '<pre class="out small">' + esc(c.input) + "</pre>");
+    if (c.rubric) pre += fold("Rubric", '<pre class="out small">' + esc(c.rubric) + "</pre>");
+    if (run.kind !== "combination") {
+      if (c.with_skill_output == null && c.without_skill_output == null) return pre;
+      return pre + '<div class="compare">' +
+        col("WITH skill", "with", c.with_skill_output) +
+        col("WITHOUT skill", "base", c.without_skill_output) + "</div>";
+    }
+    var arms = c.arms || {};
+    var keys = Object.keys(arms);
+    if (!keys.length) return pre;
+    var baseKey = null, comboKey = null;
+    ["base", "baseline", "none", "WITHOUT", "without"].forEach(function (k) {
+      if (!baseKey && arms[k] != null) baseKey = k;
+    });
+    ((run.metrics || {}).arms || []).forEach(function (a) {
+      if (!comboKey && armRole(run, a) === "full" && arms[a.name] != null) comboKey = a.name;
+    });
+    if (!comboKey && arms.combo != null) comboKey = "combo";
+    var html = pre;
+    if (baseKey != null && comboKey != null) {
+      html += '<div class="compare">' + col(comboKey + " (all skills)", "with", arms[comboKey]) +
+              col(baseKey + " (no skills)", "base", arms[baseKey]) + "</div>";
+    }
+    var others = keys.filter(function (k) { return k !== baseKey && k !== comboKey; });
+    if (others.length) {
+      html += fold("Other arms (" + others.join(", ") + ")",
+        others.map(function (k) {
+          return '<div class="colhead" style="margin-top:9px"><span class="armpill with">' + esc(k) +
+                 '</span></div><pre class="out">' + esc(arms[k] == null ? "" : String(arms[k])) + "</pre>";
+        }).join(""));
+    }
+    return html;
+  }
+  function tasksPanel(run) {
+    var ts = run.per_task || [];
+    var hasCases = !!(((run._detail || {}).cases) || []).length;
+    if (!ts.length && !hasCases) return "";
+    var combo = run.kind === "combination";
+    var files = run.files || {};
+    var blocks = (ts.length ? ts : (((run._detail || {}).cases) || [])).map(function (t, i) {
+      var head = '<div class="task-head"><span class="tid">' + esc(t.id || "t" + (i + 1)) + "</span>" +
+                 esc(t.title || "") + "</div>";
+      var sub = [];
+      if (t.winner) {
+        sub.push((combo ? "combo vs none: " : "winner: ") + '<b class="' + winnerClass(t.winner) + '">' +
+                 esc(t.winner) + "</b>" + (t.margin ? " (" + esc(t.margin) + ")" : ""));
+      }
+      var sc = t.scores || {};
+      var scoreTxt = Object.keys(sc).map(function (k) { return esc(k) + " " + fmt(sc[k], 2); }).join(" · ");
+      if (scoreTxt) sub.push("judge scores: <b>" + scoreTxt + "</b>");
+      if (combo && t.best_single) {
+        var cvb = t.combo_vs_best || {};
+        sub.push("best single: <b>" + esc(t.best_single) + "</b>" +
+          (cvb.result ? ' — combo <b class="' + (cvb.result === "win" ? "win-arm" : cvb.result === "loss" ? "win-base" : "win-tie") +
+            '">' + esc(cvb.result) + "</b>" + (cvb.margin ? " (" + esc(cvb.margin) + ")" : "") : ""));
+      }
+      var ge = t.deepeval || {};
+      var geTxt = Object.keys(ge).map(function (k) { return esc(k) + " " + fmt(ge[k], 2); }).join(" · ");
+      if (geTxt) sub.push("GEval: " + geTxt);
+      var c = caseFor(run, t, i);
+      var body = c ? compareBlock(run, c)
+        : '<p class="fallback">Verbatim outputs aren\u2019t embedded — no <code>' + esc(run.id) +
+          ".deepeval.cases.json</code> was found next to the summary at build time. " +
+          (files.records ? 'Read them in the <a href="' + esc(files.records) + '">records companion</a>.'
+                         : "See the records companion in reports/.") + "</p>";
+      return '<div class="task">' + head +
+             (sub.length ? '<div class="task-sub">' + sub.join("<br>") + "</div>" : "") + body + "</div>";
+    }).join("");
+    var raw = rawBlock(esc(run.id) + ".judge.verdicts.json", (run._detail || {}).judge);
+    return panel("Tasks — judge verdicts &amp; outputs",
+      blocks + raw, null, hasCases ? "verbatim, transcript-sourced" : null);
+  }
+
+  function caveatsPanel(run) {
+    var c = run.caveats || [];
+    if (!c.length) return "";
+    return panel("Caveats", '<ul class="cavlist">' +
+      c.map(function (x) { return "<li>" + esc(x) + "</li>"; }).join("") + "</ul>");
+  }
+  function artifactsPanel(run) {
+    var f = run.files || {};
+    var label = { report: "Report", records: "Records (verbatim A/B)", deepeval_md: "deepeval",
+                  deepeval_json: "deepeval JSON", deepeval_cases: "deepeval cases",
+                  interaction_md: "Interaction", interaction_json: "Interaction JSON",
+                  judge_verdicts_md: "Judge verdicts", judge_verdicts_json: "Judge verdicts JSON" };
+    var links = Object.keys(f).filter(function (k) { return f[k]; }).map(function (k) {
+      return '<a href="' + esc(f[k]) + '">' + esc(label[k] || k) + "</a>";
+    });
+    if (!links.length) return "";
+    return panel("Artifacts", '<div class="files">' + links.join("") + "</div>");
+  }
+
+  function renderDetail(run) {
+    var b = bucketOf(run);
+    var modeTags = (run.skills || []).filter(function (s) { return s.mode; })
+      .map(function (s) { return '<span class="tag">' + esc(s.name) + ": " + esc(s.mode) + "</span>"; }).join("");
+    return '<div class="dwrap ' + b + '" style="--vc:var(--' + b + ')">' +
+      '<a class="back" href="#">← All evaluations</a>' +
+      '<div class="dhead"><h1>' + titleOf(run) + "</h1>" + badge(run, b) + "</div>" +
+      '<div class="tagrow"><span class="tag kind">' + esc(run.kind || "single") + "</span>" +
+        '<span class="tag">' + esc(((run.metrics || {}).mechanism) || "—") + "</span>" + modeTags +
+        (run.design ? '<span class="tag">' + esc(run.design) + "</span>" : "") + "</div>" +
+      '<div class="dmeta">' + esc(run.date || "—") + '<span class="sep">·</span>run ' +
+        esc(run.run != null ? run.run : "—") + '<span class="sep">·</span>' +
+        esc(run.tasks != null ? run.tasks : "?") + " tasks" +
+        (qualityFlagged(run) ? '<span class="sep">·</span><span class="flag">⚑ baseline won on quality</span>' : "") + "</div>" +
+      verdictPanel(run) +
+      statPanel(run) +
+      costPanel(run) +
+      interactionPanel(run) +
+      deepevalPanel(run) +
+      tasksPanel(run) +
+      caveatsPanel(run) +
+      artifactsPanel(run) +
+      "</div>";
+  }
+
+  /* ------------------------------------------------------- state & render */
+  var DATA = window.__SKILL_EVAL_DATA__;
+  var state = { q: "", kind: "all", buckets: {}, sort: "date" };
+
+  function visibleRuns() {
+    var runs = (DATA && DATA.runs) || [];
+    var anyBucket = Object.keys(state.buckets).some(function (k) { return state.buckets[k]; });
+    var q = state.q.trim().toLowerCase();
+    var out = runs.filter(function (r) {
+      if (state.kind !== "all" && (r.kind || "single") !== state.kind) return false;
+      if (anyBucket && !state.buckets[bucketOf(r)]) return false;
+      if (q) {
+        var hay = (r.id + " " + skillNames(r).join(" ")).toLowerCase();
+        if (hay.indexOf(q) < 0) return false;
+      }
+      return true;
+    });
+    out.sort(function (a, b) {
+      if (state.sort === "savings") {
+        var ca = costDelta(a), cb = costDelta(b);
+        return (ca == null ? 1e9 : ca) - (cb == null ? 1e9 : cb);
+      }
+      if (state.sort === "quality") return qScore(b) - qScore(a);
+      if (state.sort === "name") return String(a.id).localeCompare(String(b.id));
+      var d = String(b.date || "").localeCompare(String(a.date || ""));
+      return d !== 0 ? d : String(a.id).localeCompare(String(b.id));
+    });
+    return out;
+  }
+
+  function render() {
+    var runs = visibleRuns();
+    var total = ((DATA && DATA.runs) || []).length;
+    document.getElementById("grid").innerHTML = runs.map(card).join("");
+    var cl = document.getElementById("countLine");
+    cl.hidden = false;
+    cl.textContent = runs.length === total
+      ? total + " evaluation" + (total === 1 ? "" : "s") + " on file"
+      : runs.length + " of " + total + " evaluations match";
+  }
+
+  /* ---------------------------------------------------------------- routes */
+  function route() {
+    var detailEl = document.getElementById("detail");
+    var listEl = document.getElementById("listView");
+    var h = location.hash || "";
+    if (h.indexOf("#run/") === 0 && DATA && DATA.runs) {
+      var id = h.slice(5);
+      try { id = decodeURIComponent(id); } catch (e) { /* keep raw */ }
+      var run = null;
+      DATA.runs.forEach(function (r) { if (String(r.id) === id) run = r; });
+      if (run) {
+        detailEl.innerHTML = renderDetail(run);
+        detailEl.hidden = false;
+        listEl.hidden = true;
+        window.scrollTo(0, 0);
+        return;
+      }
+    }
+    detailEl.hidden = true;
+    detailEl.innerHTML = "";
+    listEl.hidden = false;
+  }
+
+  function boot() {
+    var gen = document.getElementById("genMeta");
+    if (!DATA || !DATA.runs) {
+      document.getElementById("empty").hidden = false;
+      gen.textContent = "template — no data injected yet";
+      return;
+    }
+    gen.textContent = "generated " + (DATA.generated_at || "—") + " · schema v" + (DATA.schema_version || "?");
+    if (!DATA.runs.length) { document.getElementById("empty").hidden = false; return; }
+    document.getElementById("kpis").hidden = false;
+    document.getElementById("toolbar").hidden = false;
+    renderKPIs(DATA.runs);
+    render();
+
+    document.getElementById("q").addEventListener("input", function (e) {
+      state.q = e.target.value; render();
+    });
+    document.querySelectorAll("[data-kind]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        state.kind = btn.getAttribute("data-kind");
+        document.querySelectorAll("[data-kind]").forEach(function (b) {
+          b.setAttribute("aria-pressed", String(b === btn));
+        });
+        render();
+      });
+    });
+    document.querySelectorAll("[data-bucket]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var k = btn.getAttribute("data-bucket");
+        state.buckets[k] = !state.buckets[k];
+        btn.setAttribute("aria-pressed", String(!!state.buckets[k]));
+        render();
+      });
+    });
+    document.getElementById("sort").addEventListener("change", function (e) {
+      state.sort = e.target.value; render();
+    });
+
+    window.addEventListener("hashchange", route);
+    route();
+  }
+
+  /* ------------------------------------------------------------- theming */
+  (function theme() {
+    var root = document.documentElement, KEY = "skilleval-theme", initial = null;
+    var btn = document.getElementById("themeBtn");
+    function sync() {
+      btn.textContent = root.getAttribute("data-theme") === "dark" ? "☀" : "☾";
+    }
+    try { initial = localStorage.getItem(KEY); } catch (e) { /* file:// without storage */ }
+    if (!initial && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) {
+      initial = "dark";
+    }
+    if (initial) root.setAttribute("data-theme", initial);
+    sync();
+    btn.addEventListener("click", function () {
+      var next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
+      root.setAttribute("data-theme", next);
+      try { localStorage.setItem(KEY, next); } catch (e) { /* ignore */ }
+      sync();
+    });
+  })();
+
+  boot();
+})();
+</script>
+</body>
+</html>

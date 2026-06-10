@@ -1,0 +1,334 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-06-10 11:22 UTC",
+  "generator": "skill-evaluator/build_dashboard.py",
+  "count": 2,
+  "runs": [
+    {
+      "schema_version": 1,
+      "id": "caveman+karpathy-combo-eval-1",
+      "kind": "combination",
+      "skills": [
+        {
+          "name": "caveman",
+          "mode": "ultra",
+          "mechanism": "output"
+        },
+        {
+          "name": "karpathy",
+          "mechanism": "behavioral"
+        }
+      ],
+      "design": "factorial-2",
+      "run": 1,
+      "date": "2026-06-07",
+      "tasks": 3,
+      "verdict": {
+        "label": "additive",
+        "emoji": "➖",
+        "headline": "−31% cost-weighted (−50% output) vs none; interaction +212 cu (~2% of savings) → additive; quality flat vs near-ceiling baseline (combo vs none 0W/3L; vs best single 2W/1L)",
+        "bottom_line": "Stack them — savings add cleanly with no conflict; expect token wins from caveman and leaner code from karpathy, not a quality lift on simple tasks. Biggest payoff on verbose, over-engineering-prone work."
+      },
+      "metrics": {
+        "mechanism": "output + behavioral",
+        "primary_axis": "output_tokens",
+        "headline": {
+          "cost_delta_pct": -31.0,
+          "primary_delta_pct": -50.1,
+          "primary_label": "output tokens"
+        },
+        "arms": [
+          {
+            "name": "base",
+            "skills": [],
+            "cost_units": 13611.5,
+            "output_tokens": 2387,
+            "context_tokens": 6800
+          },
+          {
+            "name": "caveman",
+            "skills": [
+              "caveman"
+            ],
+            "cost_units": 10575.3,
+            "output_tokens": 1614,
+            "context_tokens": 7463
+          },
+          {
+            "name": "karpathy",
+            "skills": [
+              "karpathy"
+            ],
+            "cost_units": 12218.0,
+            "output_tokens": 1918,
+            "context_tokens": 7575
+          },
+          {
+            "name": "combo",
+            "skills": [
+              "caveman",
+              "karpathy"
+            ],
+            "cost_units": 9394.0,
+            "output_tokens": 1192,
+            "context_tokens": 8206
+          }
+        ]
+      },
+      "interaction": {
+        "available": true,
+        "classification": "additive",
+        "value": 212.2,
+        "combined_savings": 4217.5,
+        "additive_prediction": 9181.8,
+        "individual_effects": {
+          "caveman": -3036.2,
+          "karpathy": -1393.5
+        },
+        "marginal_effects": {
+          "caveman": -2824.0,
+          "karpathy": -1181.3
+        },
+        "best_single": "caveman",
+        "best_single_savings": 3036.2
+      },
+      "quality": {
+        "combo_vs_none": {
+          "wins": 0,
+          "ties": 0,
+          "losses": 3
+        },
+        "combo_vs_best_single": {
+          "wins": 2,
+          "ties": 0,
+          "losses": 1,
+          "best_single": "karpathy"
+        },
+        "deepeval": {
+          "available": true,
+          "arm_means": {
+            "base": 0.967,
+            "caveman": 0.867,
+            "karpathy": 1.0,
+            "combo": 1.0
+          },
+          "delta_vs_baseline": 0.033
+        }
+      },
+      "per_task": [
+        {
+          "id": "t1",
+          "title": "Speed up a slow list-dedupe function",
+          "winner": "base",
+          "margin": "slight",
+          "scores": {
+            "combo": 9.0,
+            "base": 9.0
+          },
+          "best_single": "caveman",
+          "combo_vs_best": {
+            "result": "win",
+            "margin": "slight"
+          },
+          "deepeval": {
+            "base": 1.0,
+            "caveman": 1.0,
+            "karpathy": 1.0,
+            "combo": 1.0
+          }
+        },
+        {
+          "id": "t2",
+          "title": "Add input validation to register_user",
+          "winner": "base",
+          "margin": "clear",
+          "scores": {
+            "base": 9.0,
+            "combo": 7.0
+          },
+          "best_single": "karpathy",
+          "combo_vs_best": {
+            "result": "win",
+            "margin": "slight"
+          },
+          "deepeval": {
+            "base": 1.0,
+            "caveman": 0.6,
+            "karpathy": 1.0,
+            "combo": 1.0
+          }
+        },
+        {
+          "id": "t3",
+          "title": "Retry-with-delay helper",
+          "winner": "base",
+          "margin": "slight",
+          "scores": {
+            "combo": 9.25,
+            "base": 9.5
+          },
+          "best_single": "karpathy",
+          "combo_vs_best": {
+            "result": "loss",
+            "margin": "slight"
+          },
+          "deepeval": {
+            "base": 0.9,
+            "caveman": 1.0,
+            "karpathy": 1.0,
+            "combo": 1.0
+          }
+        }
+      ],
+      "caveats": [
+        "small-n (3 tasks, 1 run per arm)",
+        "karpathy arm re-run under no-tools constraint (verification cost not priced)",
+        "near-ceiling baseline tasks under-test quality value",
+        "per-arm session totals (no per-task token split)"
+      ],
+      "files": {
+        "report": "caveman+karpathy-combo-eval-1.md",
+        "records": "caveman+karpathy-combo-eval-1-records.md",
+        "deepeval_md": "caveman+karpathy-combo-eval-1.deepeval.md",
+        "deepeval_json": "caveman+karpathy-combo-eval-1.deepeval.json",
+        "deepeval_cases": "caveman+karpathy-combo-eval-1.deepeval.cases.json",
+        "interaction_md": "caveman+karpathy-combo-eval-1.interaction.md",
+        "interaction_json": "caveman+karpathy-combo-eval-1.interaction.json",
+        "judge_verdicts_md": "caveman+karpathy-combo-eval-1.judge.verdicts.md",
+        "judge_verdicts_json": "caveman+karpathy-combo-eval-1.judge.verdicts.json"
+      },
+      "_source": "caveman+karpathy-combo-eval-1.summary.json"
+    },
+    {
+      "schema_version": 1,
+      "id": "caveman-eval-1",
+      "kind": "single",
+      "skills": [
+        {
+          "name": "caveman",
+          "mode": "ultra",
+          "mechanism": "output"
+        }
+      ],
+      "design": "with-vs-without (single-injection, multi-task)",
+      "run": 1,
+      "date": "2026-06-06",
+      "tasks": 3,
+      "verdict": {
+        "label": "mixed-favorable",
+        "emoji": "⚠️",
+        "headline": "−59% output / −48% cost-weighted; quality 0W·0T·3L (mean −1.0/10) with zero technical errors — accuracy preserved",
+        "bottom_line": "Use ultra where terse, accurate answers are wanted; skip where reference-grade completeness matters. Guidance load repays in <1 turn (breakeven ≈ 0.35)."
+      },
+      "metrics": {
+        "mechanism": "output",
+        "primary_axis": "output_tokens",
+        "headline": {
+          "cost_delta_pct": -48.5,
+          "primary_delta_pct": -58.9,
+          "primary_label": "output tokens"
+        },
+        "arms": [
+          {
+            "name": "WITHOUT",
+            "skills": [],
+            "cost_units": 21799,
+            "output_tokens": 4060,
+            "cache_read_input_tokens": 5805
+          },
+          {
+            "name": "WITH",
+            "skills": [
+              "caveman"
+            ],
+            "cost_units": 11235,
+            "output_tokens": 1668,
+            "input_tokens": 2,
+            "cache_creation_input_tokens": 1850,
+            "cache_read_input_tokens": 5805
+          }
+        ],
+        "setup": {
+          "one_time_cost_units": 1396,
+          "per_turn_saving_cost_units": 3987,
+          "breakeven_turns": 0.35
+        }
+      },
+      "quality": {
+        "pairwise": {
+          "comparison": "with_vs_without",
+          "wins": 0,
+          "ties": 0,
+          "losses": 3,
+          "mean_delta": -1.0
+        },
+        "deepeval": {
+          "available": true,
+          "arm_means": {
+            "WITH": 1.0,
+            "WITHOUT": 1.0
+          },
+          "delta_vs_baseline": 0.0
+        }
+      },
+      "per_task": [
+        {
+          "id": "t1",
+          "title": "Database connection pooling",
+          "winner": "WITHOUT",
+          "margin": "slight",
+          "scores": {
+            "WITH": 8,
+            "WITHOUT": 9
+          },
+          "deepeval": {
+            "WITH": 1.0,
+            "WITHOUT": 1.0
+          }
+        },
+        {
+          "id": "t2",
+          "title": "Intermittent 401s after ~1 hour",
+          "winner": "WITHOUT",
+          "margin": "slight",
+          "scores": {
+            "WITH": 9,
+            "WITHOUT": 10
+          },
+          "deepeval": {
+            "WITH": 1.0,
+            "WITHOUT": 1.0
+          }
+        },
+        {
+          "id": "t3",
+          "title": "REST vs gRPC tradeoffs",
+          "winner": "WITHOUT",
+          "margin": "slight",
+          "scores": {
+            "WITH": 9,
+            "WITHOUT": 10
+          },
+          "deepeval": {
+            "WITH": 1.0,
+            "WITHOUT": 1.0
+          }
+        }
+      ],
+      "caveats": [
+        "small-n (3 tasks, 1 run)",
+        "per-task output figures apportioned from session totals",
+        "output_tokens stub on WITH arm reconstructed from transcript totals",
+        "measured −59% vs claimed −75%"
+      ],
+      "files": {
+        "report": "caveman-eval-1.md",
+        "records": "caveman-eval-1-records.md",
+        "deepeval_md": "caveman-eval-1.deepeval.md",
+        "deepeval_json": "caveman-eval-1.deepeval.json",
+        "deepeval_cases": "caveman-eval-1.deepeval.cases.json"
+      },
+      "_source": "caveman-eval-1.summary.json"
+    }
+  ]
+}

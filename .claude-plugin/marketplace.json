@@ -8,7 +8,7 @@
     {
       "name": "skill-evaluator",
       "source": "./",
-      "description": "Cost-weighted A/B + multi-skill interaction (synergy / redundancy / conflict) performance testing for Claude Code skills — not a static linter/security scanner."
+      "description": "Blind A/B evaluation harness for Claude Code skills: transcript-sourced cost-weighted tokens, blind LLM-as-judge quality, multi-skill interaction (synergy/redundancy/conflict), required deepeval cross-check — plus the Skill Harness Dashboard, a zero-dependency static governance page over every run."
     }
   ]
 }
