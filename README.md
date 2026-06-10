@@ -64,6 +64,47 @@ This tool runs that comparison and reports two things you can act on:
 
 ## How it works (30 seconds)
 
+```mermaid
+flowchart TD
+    U([You: Evaluate ./my-skill]) --> ORC[Orchestrator skill<br/>derive tasks + blind rubrics · holds secret arm map]
+
+    subgraph RW ["skill-eval-runner subagent · clean context"]
+        W[WITH skill injected]
+    end
+    subgraph RO ["skill-eval-runner subagent · clean context"]
+        WO[WITHOUT skill]
+    end
+    subgraph JB ["skill-eval-judge subagent · separate blind context"]
+        J[scores + winner]
+    end
+
+    ORC -->|Task| W
+    ORC -->|Task| WO
+    ORC -->|Task| J
+    W --> T[(Session transcript)]
+    WO --> T
+    T --> TOK[Token Δ per arm]
+    T -.->|anonymized answers only| J
+    TOK --> AGG[Aggregate + un-blind]
+    J --> AGG
+    AGG --> OUT[report · records · deepeval]
+    AGG --> SUM[summary.json · data layer]
+    SUM --> BD[build_dashboard.py]
+    BD --> DASH([Skill Harness Dashboard])
+
+    classDef accent fill:#dcfce7,stroke:#16a34a,color:#14532d;
+    classDef muted fill:#eef2ff,stroke:#6366f1,color:#1e1b4b;
+    classDef blind fill:#fef3c7,stroke:#d97706,color:#7c2d12;
+    class W,DASH accent;
+    class WO muted;
+    class J blind;
+```
+
+<sub>Each arm runs in its own **clean `skill-eval-runner` subagent context** — the injected skill is the only difference — and the **`skill-eval-judge`** scores in a *separate blind context* that never sees arm labels, run markers, or token counts. One source of truth (the transcript), end to end. **Combination mode** (2+ skills) runs this exact pipeline over skill *subsets* and folds in `interaction_effects.py` after Phase 3 to score synergy / redundancy / conflict.</sub>
+
+<details>
+<summary>Prefer plain text? The same pipeline as a tree</summary>
+
 ```
 skill-evaluator (orchestrator skill)
   ├─ reads target SKILL.md → derives N tasks + skill-agnostic rubrics
@@ -78,6 +119,8 @@ skill-evaluator (orchestrator skill)
   └─ writes reports/<skill>-eval-<n>.summary.json (data layer)
         → build_dashboard.py refreshes reports/dashboard.html + index.json
 ```
+
+</details>
 
 - **Injection-based A/B** makes the skill the only manipulated variable and
   works even for skills that aren't installed anywhere yet.
